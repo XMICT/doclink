@@ -1,4 +1,4 @@
-export const appName = 'NERP Docs';
+export const appName = 'doclink';
 export const docsRoute = '/docs';
 export const docsImageRoute = '/og/docs';
 export const docsContentRoute = '/llms.mdx/docs';

@@ -1,8 +1,8 @@
-# nerp-docs
+# doclink
 
-Portal de documentación técnica del proyecto NERP. Construido con [Fumadocs](https://fumadocs.dev) sobre Next.js.
+Este repositorio es el encargado de renderizar y presentar la documentación técnica del proyecto. Construido con [Fumadocs](https://fumadocs.dev) sobre Next.js.
 
-**nerp-docs es un renderizador puro**: no tiene contenido propio. Todo el MDX, YAML y configuración de navegación vive en el repositorio del backend hermano. nerp-docs solo lee, enlaza y presenta ese contenido.
+**doclink es un renderizador puro**: no tiene contenido propio. Todo el MDX, YAML y configuración de navegación vive en un repositorio hermano (el backend). doclink solo lee, enlaza y presenta ese contenido.
 
 ---
 
@@ -12,7 +12,7 @@ Portal de documentación técnica del proyecto NERP. Construido con [Fumadocs](h
 ../
 ├── backend/                 ← fuente de verdad del contenido
 │   ├── docs.json            ← define secciones y módulos
-│   ├── docs/                ← páginas globales (fundamentos, etc.)
+│   ├── docs/                ← páginas globales
 │   │   ├── meta.json
 │   │   └── index.mdx
 │   └── [modulo]/
@@ -22,10 +22,10 @@ Portal de documentación técnica del proyecto NERP. Construido con [Fumadocs](h
 │           └── api/
 │               └── openapi.yaml
 │
-└── nerp-docs/               ← este repositorio
+└── doclink/                 ← este repositorio
     ├── modules/             ← generado por setup.js (gitignored)
     │   ├── meta.json        ← generado
-    │   ├── fundamentos/     ← symlink → ../backend/docs/
+    │   ├── [seccion]/       ← symlink → ../backend/docs/
     │   └── [modulo]/        ← symlink → ../backend/[modulo]/docs/
     └── scripts/
         └── setup.js         ← crea los symlinks y el meta.json raíz
@@ -38,7 +38,7 @@ Portal de documentación técnica del proyecto NERP. Construido con [Fumadocs](h
 ## Requisitos
 
 - Node.js 18+
-- El repositorio del backend debe estar en una carpeta hermana (por defecto `../backend`)
+- El repositorio con el contenido debe estar en una carpeta hermana (por defecto `../backend`)
 
 ---
 
@@ -70,7 +70,7 @@ npm install
 npm run setup
 ```
 
-Este script lee `../[BACKEND_REPO]/docs.json` y crea los symlinks en `modules/`. Se ejecuta automáticamente antes de `dev` y `build`.
+Lee `../[BACKEND_REPO]/docs.json` y crea los symlinks en `modules/`. Se ejecuta automáticamente antes de `dev` y `build`.
 
 ---
 
@@ -90,7 +90,7 @@ Este script lee `../[BACKEND_REPO]/docs.json` y crea los symlinks en `modules/`.
 
 ### Agregar una página global
 
-Las páginas que no pertenecen a ningún módulo (como "Introducción", "Fundamentos") van en `backend/docs/`:
+Las páginas que no pertenecen a ningún módulo van en `backend/docs/`:
 
 1. Crea el archivo `backend/docs/mi-pagina.mdx`
 2. Agrégalo a `backend/docs/meta.json` en el array `pages`
@@ -130,7 +130,7 @@ El ícono se resuelve directamente como nombre PascalCase de [lucide.dev](https:
 
 ```json
 {
-  "title": "NERP Docs",
+  "title": "Docs",
   "sections": [
     {
       "id": "fundamentos",
@@ -138,28 +138,28 @@ El ícono se resuelve directamente como nombre PascalCase de [lucide.dev](https:
       "dir": "docs"
     },
     {
-      "id": "compras-y-gastos",
-      "title": "Compras y Gastos",
+      "id": "mi-seccion",
+      "title": "Mi Sección",
       "modules": [
-        { "id": "requisicion", "title": "Requisiciones", "icon": "ClipboardList" }
+        { "id": "mi-modulo", "title": "Mi Módulo", "icon": "Box" }
       ]
     }
   ]
 }
 ```
 
-- **`dir`**: apunta a un directorio del backend que contiene páginas MDX planas (no módulos). Las páginas aparecen directamente bajo la sección en el sidebar.
-- **`modules`**: lista de módulos con su propio `docs/` dentro del backend. Cada módulo puede tener páginas MDX y un spec OpenAPI.
+- **`dir`**: apunta a un directorio del backend con páginas MDX planas. Las páginas aparecen directamente bajo la sección en el sidebar.
+- **`modules`**: lista de módulos con su propio `docs/` en el backend. Cada módulo puede tener páginas MDX y un spec OpenAPI.
 
 ---
 
 ## Funcionalidades
 
-- **Sidebar dinámico** generado desde `docs.json` — sin tocar código de nerp-docs
+- **Sidebar dinámico** generado desde `docs.json` — sin tocar código de doclink
 - **Diagramas Mermaid** — bloques ` ```mermaid ` se renderizan automáticamente
 - **Cards con íconos** — componente `<Card icon="NombreLucide" />` en MDX
 - **Playground OpenAPI interactivo** — con proxy CORS integrado y URL configurable via `.env`
-- **Respuestas JSON formateadas** — pretty-print automático y truncado a 200 líneas para evitar congelamientos
+- **Respuestas JSON formateadas** — pretty-print automático y truncado a 200 líneas
 - **Búsqueda full-text** con FlexSearch
 - **Chat de IA** integrado via LLM Gateway
 
@@ -175,3 +175,9 @@ El ícono se resuelve directamente como nombre PascalCase de [lucide.dev](https:
 | fumadocs-openapi | 11.0.2 |
 | React | 19 |
 | Tailwind CSS | 4 |
+
+---
+
+## Licencia
+
+MIT © Carlos Guardiola
