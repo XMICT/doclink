@@ -1,0 +1,50 @@
+{
+  "name": "nerp-docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "node scripts/setup.js",
+    "build": "npm run setup && next build",
+    "dev": "npm run setup && next dev",
+    "start": "PORT=4000 next start",
+    "types:check": "fumadocs-mdx && next typegen && tsc --noEmit",
+    "postinstall": "fumadocs-mdx"
+  },
+  "dependencies": {
+    "@ai-sdk/react": "^3.0.201",
+    "@llmgateway/ai-sdk-provider": "^3.8.0",
+    "@radix-ui/react-presence": "^1.1.6",
+    "ai": "^6.0.199",
+    "class-variance-authority": "^0.7.1",
+    "flexsearch": "^0.8.212",
+    "fumadocs-core": "16.10.3",
+    "fumadocs-mdx": "15.0.12",
+    "fumadocs-openapi": "^11.0.2",
+    "fumadocs-ui": "16.10.3",
+    "hast-util-to-jsx-runtime": "^2.3.6",
+    "lucide-react": "^1.17.0",
+    "mermaid": "^11.15.0",
+    "next": "16.2.9",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "remark": "^15.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-rehype": "^11.1.2",
+    "tailwind-merge": "^3.6.0",
+    "unist-util-visit": "^5.1.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.0",
+    "@types/hast": "^3.0.4",
+    "@types/js-yaml": "^4.0.9",
+    "@types/mdx": "^2.0.14",
+    "@types/node": "^25.9.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "postcss": "^8.5.15",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^6.0.3"
+  }
+}
