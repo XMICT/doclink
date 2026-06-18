@@ -4,6 +4,7 @@
 # generated content
 .source
 /modules/
+/.openapi-cache/
 
 # test & build
 /coverage

@@ -30,7 +30,9 @@ const docsConfig = JSON.parse(fs.readFileSync(path.join(backendPath, 'docs.json'
 
 const input = Object.fromEntries(
   getModules(docsConfig).map(m => {
-    const specPath = path.join(backendPath, m.id, 'docs', 'api', 'openapi.yaml');
+    const cacheFile = path.join(process.cwd(), '.openapi-cache', `${m.id}.yaml`);
+    const backendFile = path.join(backendPath, m.id, 'docs', 'api', 'openapi.yaml');
+    const specPath = fs.existsSync(cacheFile) ? cacheFile : backendFile;
     return [
       m.id,
       () => {
