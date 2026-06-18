@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import yaml from 'js-yaml';
+import { detectExtensions, expandSpec } from './openapi-expander.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
@@ -53,6 +55,25 @@ if (!fs.existsSync(docsConfigPath)) {
 }
 
 const docsConfig = JSON.parse(fs.readFileSync(docsConfigPath, 'utf-8'));
+const cacheDir = path.join(rootDir, '.openapi-cache');
+
+function processOpenApi(moduleId) {
+  const openapiDir  = path.join(backendPath, moduleId, 'docs', 'api');
+  const openapiPath = path.join(openapiDir, 'openapi.yaml');
+  if (!fs.existsSync(openapiPath)) return;
+
+  const spec = yaml.load(fs.readFileSync(openapiPath, 'utf-8'));
+  if (!detectExtensions(spec)) return;
+
+  try {
+    const expanded = expandSpec(spec, backendPath, openapiDir);
+    fs.mkdirSync(cacheDir, { recursive: true });
+    fs.writeFileSync(path.join(cacheDir, `${moduleId}.yaml`), yaml.dump(expanded, { noRefs: true }));
+    console.log(`✓ openapi expandido: ${moduleId}`);
+  } catch (err) {
+    console.error(`✗ Error expandiendo openapi de ${moduleId}:`, err.message);
+  }
+}
 
 fs.rmSync(modulesPath, { recursive: true, force: true });
 fs.mkdirSync(modulesPath, { recursive: true });
@@ -73,6 +94,7 @@ for (const section of docsConfig.sections ?? []) {
       const link = path.join(modulesPath, mod.id);
       fs.symlinkSync(target, link);
       console.log(`✓ ${mod.id}/ → ${target}`);
+      processOpenApi(mod.id);
     }
   }
 }
