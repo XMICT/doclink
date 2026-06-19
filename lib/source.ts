@@ -2,7 +2,7 @@ import { docs } from 'collections/server';
 import { loader } from 'fumadocs-core/source';
 import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
 import { docsContentRoute, docsImageRoute, docsRoute } from './shared';
-import { openapi } from './openapi';
+import { openapi, openapiByModule } from './openapi';
 import fs from 'fs';
 import path from 'path';
 
@@ -32,9 +32,11 @@ const docsConfig = JSON.parse(fs.readFileSync(path.join(backendPath, 'docs.json'
 const docsSource = docs.toFumadocsSource();
 
 const apiSources = await Promise.all(
-  getModules(docsConfig).map(m =>
-    openapi.staticSource({ baseDir: `${m.id}/api`, meta: true })
-  )
+  getModules(docsConfig).map(m => {
+    const inst = openapiByModule[m.id];
+    if (!inst) return { files: [] };
+    return inst.staticSource({ baseDir: `${m.id}/api`, meta: true });
+  })
 );
 const allApiFiles = apiSources.flatMap(src => src.files);
 

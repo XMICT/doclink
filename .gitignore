@@ -5,6 +5,7 @@
 .source
 /modules/
 /.openapi-cache/
+/.understand-anything
 
 # test & build
 /coverage
