@@ -17,16 +17,31 @@ function loadEnvLocal(): Record<string, string> {
   );
 }
 
-function getModules(docsConfig: { modules?: { id: string }[]; sections?: { modules?: { id: string }[] }[] }) {
-  if (docsConfig.modules) return docsConfig.modules;
-  return docsConfig.sections!.filter(s => s.modules).flatMap(s => s.modules!);
+export interface ApiManualNode {
+  type: 'group' | 'page';
+  title: string;
+  op?: string;
+  content?: ApiManualNode[];
+}
+
+export interface ApiNode {
+  id: string;
+  title: string;
+  spec: string;
+  mode: 'auto' | 'manual';
+  baseDir: string;
+  content: ApiManualNode[] | null;
 }
 
 const env = loadEnvLocal();
-const backendRepo = env.BACKEND_REPO ?? process.env.BACKEND_REPO ?? 'backend';
 const apiUrl = env.API_URL ?? process.env.API_URL;
-const backendPath = path.resolve(process.cwd(), '..', backendRepo);
-const docsConfig = JSON.parse(fs.readFileSync(path.join(backendPath, 'docs.json'), 'utf-8'));
+const cacheDir = path.join(process.cwd(), '.openapi-cache');
+
+// Lista de nodos api resuelta por scripts/setup.js (corre antes de dev/build).
+const navPath = path.join(cacheDir, 'nav.json');
+export const apiNodes: ApiNode[] = fs.existsSync(navPath)
+  ? (JSON.parse(fs.readFileSync(navPath, 'utf-8')).apis as ApiNode[])
+  : [];
 
 function makeLoader(specPath: string) {
   return () => {
@@ -38,11 +53,10 @@ function makeLoader(specPath: string) {
   };
 }
 
-const moduleSpecs = getModules(docsConfig).map(m => {
-  const cacheFile = path.join(process.cwd(), '.openapi-cache', `${m.id}.yaml`);
-  const backendFile = path.join(backendPath, m.id, 'docs', 'api', 'openapi.yaml');
-  const specPath = fs.existsSync(cacheFile) ? cacheFile : backendFile;
-  return { id: m.id, specPath, loader: makeLoader(specPath) };
+const moduleSpecs = apiNodes.map(node => {
+  const cacheFile = path.join(cacheDir, `${node.id}.yaml`);
+  const specPath = fs.existsSync(cacheFile) ? cacheFile : node.spec;
+  return { id: node.id, specPath, loader: makeLoader(specPath) };
 });
 
 // Instancia compartida: usada por createProxy() y loaderPlugin()

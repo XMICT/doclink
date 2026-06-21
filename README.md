@@ -1,8 +1,8 @@
 # doclink
 
-Este repositorio es el encargado de renderizar y presentar la documentación técnica del proyecto. Construido con [Fumadocs](https://fumadocs.dev) sobre Next.js.
+Este repositorio renderiza y presenta la documentación técnica del proyecto. Construido con [Fumadocs](https://fumadocs.dev) sobre Next.js.
 
-**doclink es un renderizador puro**: no tiene contenido propio. Todo el MDX, YAML y configuración de navegación vive en un repositorio hermano (el backend). doclink solo lee, enlaza y presenta ese contenido.
+**doclink es un renderizador puro**: no tiene contenido propio. Todo el MDX, YAML y configuración de navegación vive en el repositorio hermano (`backend`). doclink solo lee, enlaza y presenta ese contenido.
 
 ---
 
@@ -10,25 +10,26 @@ Este repositorio es el encargado de renderizar y presentar la documentación té
 
 ```
 ../
-├── backend/                 ← fuente de verdad del contenido
-│   ├── docs.json            ← define secciones y módulos
-│   ├── docs/                ← páginas globales
-│   │   ├── meta.json
-│   │   └── index.mdx
+├── backend/                      ← fuente de verdad del contenido
+│   ├── docs/
+│   │   ├── index.json            ← árbol de navegación raíz (secciones + fragmentos)
+│   │   └── *.mdx                 ← páginas globales
 │   └── [modulo]/
 │       └── docs/
-│           ├── meta.json
+│           ├── nav.json          ← fragmento de navegación del módulo
 │           ├── *.mdx
 │           └── api/
 │               └── openapi.yaml
 │
-└── doclink/                 ← este repositorio
-    ├── modules/             ← generado por setup.js (gitignored)
-    │   ├── meta.json        ← generado
-    │   ├── [seccion]/       ← symlink → ../backend/docs/
-    │   └── [modulo]/        ← symlink → ../backend/[modulo]/docs/
+└── doclink/                      ← este repositorio
+    ├── modules/                  ← generado por setup.js (gitignored)
+    │   ├── meta.json             ← generado: secciones y orden del sidebar raíz
+    │   └── [modulo]/             ← directorio real con symlinks por archivo
+    │       ├── meta.json         ← generado: páginas y orden del grupo
+    │       └── *.mdx → backend/  ← symlinks a los archivos fuente
     └── scripts/
-        └── setup.js         ← crea los symlinks y el meta.json raíz
+        ├── nav-resolve.js        ← compone index.json + fragmentos, resuelve rutas
+        └── setup.js              ← recorre el árbol, crea symlinks y meta.json
 ```
 
 `modules/` está en `.gitignore`. Se regenera automáticamente antes de cada `dev` y `build`.
@@ -38,7 +39,7 @@ Este repositorio es el encargado de renderizar y presentar la documentación té
 ## Requisitos
 
 - Node.js 18+
-- El repositorio con el contenido debe estar en una carpeta hermana (por defecto `../backend`)
+- El repositorio hermano debe estar en `../[BACKEND_REPO]` (default: `../backend`)
 
 ---
 
@@ -70,7 +71,7 @@ npm install
 npm run setup
 ```
 
-Lee `../[BACKEND_REPO]/docs.json` y crea los symlinks en `modules/`. Se ejecuta automáticamente antes de `dev` y `build`.
+Lee `../[BACKEND_REPO]/docs/index.json`, compone el árbol y crea los symlinks en `modules/`. Se ejecuta automáticamente antes de `dev` y `build`.
 
 ---
 
@@ -81,19 +82,35 @@ Lee `../[BACKEND_REPO]/docs.json` y crea los symlinks en `modules/`. Se ejecuta 
 | `npm run dev` | Genera symlinks y arranca el servidor de desarrollo |
 | `npm run build` | Genera symlinks y construye para producción |
 | `npm run start` | Inicia el servidor de producción en el puerto 4000 |
-| `npm run setup` | Solo genera los symlinks (útil para depurar) |
+| `npm run setup` | Solo regenera los symlinks (útil para depurar) |
 | `npm run types:check` | Verifica tipos TypeScript |
 
 ---
 
 ## Añadir contenido al backend
 
+### Estructura de navegación
+
+La navegación se define en `backend/docs/index.json` como un árbol recursivo. Cada módulo puede tener su propio fragmento `nav.json` referenciado desde el raíz (o desde otro fragmento).
+
+**Tipos de nodo:**
+
+| Tipo | Descripción | `content` |
+|---|---|---|
+| `group` | Carpeta en el sidebar; no cambia la URL de sus hijos | array de nodos o fragmentos |
+| `page` | Página MDX | ruta al archivo `.md/.mdx` |
+| `api` (auto) | Todos los endpoints del openapi.yaml en su orden | ruta al `openapi.yaml` |
+| `api` (manual) | Solo los endpoints listados, en el orden dado | `ref` = openapi.yaml + `content` = árbol de `operationId` |
+
+Una entrada **string** en `content[]` es un fragmento: ruta a un `.json` que se inserta en su lugar. El fragmento puede ser un nodo único o un array de nodos.
+
 ### Agregar una página global
 
-Las páginas que no pertenecen a ningún módulo van en `backend/docs/`:
-
-1. Crea el archivo `backend/docs/mi-pagina.mdx`
-2. Agrégalo a `backend/docs/meta.json` en el array `pages`
+1. Crea `backend/docs/mi-pagina.mdx`
+2. Agrégala al `content[]` de la sección correspondiente en `backend/docs/index.json`:
+   ```json
+   { "type": "page", "title": "Mi Página", "content": "mi-pagina.mdx" }
+   ```
 
 ### Agregar un nuevo módulo
 
@@ -101,65 +118,145 @@ Las páginas que no pertenecen a ningún módulo van en `backend/docs/`:
    ```
    backend/mi-modulo/
    └── docs/
-       ├── meta.json
+       ├── nav.json
        ├── intro.mdx
        └── api/
            └── openapi.yaml   (opcional)
    ```
-2. Registra el módulo en `backend/docs.json`:
+
+2. Crea `backend/mi-modulo/docs/nav.json`:
    ```json
    {
-     "sections": [
-       {
-         "id": "mi-seccion",
-         "title": "Mi Sección",
-         "modules": [
-           { "id": "mi-modulo", "title": "Mi Módulo", "icon": "Box" }
-         ]
-       }
+     "type": "group",
+     "title": "Mi Módulo",
+     "icon": "Box",
+     "content": [
+       { "type": "page", "title": "Introducción", "content": "intro.mdx" },
+       { "type": "api",  "title": "API",          "content": "api/openapi.yaml" }
      ]
    }
    ```
-3. Corre `npm run setup` (o simplemente `npm run dev`, que lo hace automáticamente)
 
-El ícono se resuelve directamente como nombre PascalCase de [lucide.dev](https://lucide.dev), por ejemplo `"Box"`, `"Send"`, `"ClipboardList"`.
+3. Referencia el fragmento desde `backend/docs/index.json`:
+   ```json
+   {
+     "nav": {
+       "title": "Docs",
+       "sections": [
+         {
+           "title": "Mi Sección",
+           "content": ["../mi-modulo/docs/nav.json"]
+         }
+       ]
+     }
+   }
+   ```
+
+4. Corre `npm run setup` (o `npm run dev`, que lo hace automáticamente)
+
+Los íconos se escriben en PascalCase de [lucide.dev](https://lucide.dev): `"Box"`, `"Send"`, `"ShoppingCart"`.
+
+### Referencias entre documentos
+
+Usa rutas de archivo relativas al archivo fuente, no URLs absolutas:
+
+```markdown
+<!-- ✗ frágil: se rompe si cambia el slug -->
+[Ver Compras](/docs/compra/introduccion)
+
+<!-- ✓ estable: el build falla si el archivo no existe -->
+[Ver Compras](../compra/docs/introduccion.mdx)
+```
+
+Los anchors se conservan: `[Estado](../compra/docs/estatus.mdx#concluida)`.
 
 ---
 
-## Estructura de `docs.json`
+## Gramática del nav
 
-```json
+```jsonc
+// backend/docs/index.json — punto de entrada, solo compone secciones
 {
-  "title": "Docs",
-  "sections": [
+  "nav": {
+    "title": "Doclink",
+    "sections": [
+      {
+        "title": "Fundamentos",
+        "content": [
+          { "type": "page", "title": "Introducción", "content": "index.mdx" }
+        ]
+      },
+      {
+        "title": "Compras y Gastos",
+        "content": [
+          "../compra/docs/nav.json",
+          "../cxp/docs/nav.json"
+        ]
+      }
+    ]
+  }
+}
+```
+
+```jsonc
+// backend/compra/docs/nav.json — api en modo auto: expone todos los endpoints
+{
+  "type": "group",
+  "title": "Compras",
+  "icon": "ShoppingCart",
+  "content": [
+    { "type": "page", "title": "Introducción", "content": "introduccion.mdx" },
+    { "type": "api",  "title": "API",          "content": "api/openapi.yaml" }
+  ]
+}
+```
+
+```jsonc
+// backend/cxp/docs/nav.json — api en modo manual: solo los endpoints listados
+{
+  "type": "group",
+  "title": "Cuentas por Pagar",
+  "icon": "CreditCard",
+  "content": [
+    { "type": "page", "title": "Introducción", "content": "introduccion.mdx" },
     {
-      "id": "fundamentos",
-      "title": "Fundamentos",
-      "dir": "docs"
-    },
-    {
-      "id": "mi-seccion",
-      "title": "Mi Sección",
-      "modules": [
-        { "id": "mi-modulo", "title": "Mi Módulo", "icon": "Box" }
+      "type": "api",
+      "title": "API",
+      "ref": "api/openapi.yaml",
+      "content": [
+        {
+          "type": "group",
+          "title": "Consultas",
+          "content": [
+            { "type": "page", "title": "Listar CxP",    "op": "listarCxP" },
+            { "type": "page", "title": "Obtener CxP",   "op": "getCxPById" }
+          ]
+        }
       ]
     }
   ]
 }
 ```
 
-- **`dir`**: apunta a un directorio del backend con páginas MDX planas. Las páginas aparecen directamente bajo la sección en el sidebar.
-- **`modules`**: lista de módulos con su propio `docs/` en el backend. Cada módulo puede tener páginas MDX y un spec OpenAPI.
+**Reglas:**
+- Toda ruta (`content`, `ref`, fragmento) es **relativa al `.json` que la contiene** — el fragmento es portátil
+- Una entrada string en `content[]` es siempre un fragmento `.json` (nodos son objetos)
+- La URL de cada página se deriva de su ubicación en el backend, elidiendo el segmento `docs/`
+  - `compra/docs/introduccion.mdx` → `/docs/compra/introduccion`
+- Los `group` solo etiquetan el sidebar; no añaden segmento de URL
 
 ---
 
 ## Funcionalidades
 
-- **Sidebar dinámico** generado desde `docs.json` — sin tocar código de doclink
-- **Diagramas Mermaid** — bloques ` ```mermaid ` se renderizan automáticamente
-- **Cards con íconos** — componente `<Card icon="NombreLucide" />` en MDX
-- **Playground OpenAPI interactivo** — con proxy CORS integrado y URL configurable via `.env`
-- **Respuestas JSON formateadas** — pretty-print automático y truncado a 200 líneas
+- **Sidebar dinámico** generado desde `docs/index.json` — sin tocar código de doclink
+- **Nav por fragmentos** — cada módulo es dueño de su `nav.json`; el raíz solo los compone
+- **Validación de enlaces en build** — un `.mdx` destino inexistente rompe el build con línea y archivo
+- **API auto/manual** — auto expone todos los endpoints; manual selecciona y agrupa por `operationId`
+- **Playground OpenAPI interactivo** — proxy CORS integrado, URL configurable via `.env`
+- **Diagramas Mermaid** — bloques ` ```mermaid ` se renderizan en cliente
+- **Cards con íconos** — `<Card icon="NombreLucide" />` en MDX
+- **Respuestas JSON formateadas** — pretty-print y truncado a 200 líneas
 - **Búsqueda full-text** con FlexSearch
 - **Chat de IA** integrado via LLM Gateway
 
