@@ -17,13 +17,15 @@ import type { OpenAPIPageData } from 'fumadocs-openapi/server';
 
 export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   const params = await props.params;
+  const slug = params.slug ?? [];
 
-  if (!params.slug || params.slug.length === 0) {
+  if (slug.length === 0 && !source.getPage([])) {
+    // No hay index.mdx en la raíz: redirigir a la primera página disponible.
     const first = source.getPages()[0];
     redirect(first ? first.url : '/');
   }
 
-  const page = source.getPage(params.slug);
+  const page = source.getPage(slug);
   if (!page) notFound();
 
   // Página OpenAPI virtual (inyectada por loaderPlugin, sin body MDX)
@@ -73,7 +75,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): Promise<Metadata> {
   const params = await props.params;
-  const page = source.getPage(params.slug);
+  const page = source.getPage(params.slug ?? []);
   if (!page) notFound();
 
   return {

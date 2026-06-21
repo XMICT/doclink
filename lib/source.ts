@@ -2,47 +2,51 @@ import { docs } from 'collections/server';
 import { loader } from 'fumadocs-core/source';
 import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
 import { docsContentRoute, docsImageRoute, docsRoute } from './shared';
-import { openapi, openapiByModule } from './openapi';
-import fs from 'fs';
-import path from 'path';
-
-function loadEnvLocal(): Record<string, string> {
-  const envPath = path.join(process.cwd(), '.env.local');
-  if (!fs.existsSync(envPath)) return {};
-  return Object.fromEntries(
-    fs.readFileSync(envPath, 'utf-8')
-      .split('\n')
-      .filter(l => l.includes('=') && !l.startsWith('#'))
-      .map(l => {
-        const idx = l.indexOf('=');
-        return [l.slice(0, idx).trim(), l.slice(idx + 1).trim()];
-      })
-  );
-}
-
-function getModules(docsConfig: { modules?: { id: string }[]; sections?: { modules?: { id: string }[] }[] }) {
-  if (docsConfig.modules) return docsConfig.modules;
-  return docsConfig.sections!.filter(s => s.modules).flatMap(s => s.modules!);
-}
-
-const backendRepo = loadEnvLocal().BACKEND_REPO ?? process.env.BACKEND_REPO ?? 'backend';
-const backendPath = path.resolve(process.cwd(), '..', backendRepo);
-const docsConfig = JSON.parse(fs.readFileSync(path.join(backendPath, 'docs.json'), 'utf-8'));
+import { openapi, openapiByModule, apiNodes, type ApiManualNode } from './openapi';
 
 const docsSource = docs.toFumadocsSource();
 
-const apiSources = await Promise.all(
-  getModules(docsConfig).map(m => {
-    const inst = openapiByModule[m.id];
-    if (!inst) return { files: [] };
-    return inst.staticSource({ baseDir: `${m.id}/api`, meta: true });
-  })
-);
-const allApiFiles = apiSources.flatMap(src => src.files);
+type SourceFile = (typeof docsSource.files)[number];
+
+// Modo manual: aplana el árbol de operationId a `pages[]` de fumadocs,
+// usando separadores para los grupos. Los endpoints no listados quedan fuera.
+function flattenApi(content: ApiManualNode[]): string[] {
+  const pages: string[] = [];
+  for (const node of content) {
+    if (node.type === 'group') {
+      pages.push(`---${node.title}---`);
+      if (node.content) pages.push(...flattenApi(node.content));
+    } else if (node.type === 'page' && node.op) {
+      pages.push(node.op);
+    }
+  }
+  return pages;
+}
+
+const apiFiles: SourceFile[] = [];
+for (const node of apiNodes) {
+  const inst = openapiByModule[node.id];
+  if (!inst) continue;
+
+  if (node.mode === 'manual' && node.content) {
+    // Sin meta auto: lo construimos nosotros para seleccionar/ordenar.
+    const src = await inst.staticSource({ baseDir: node.baseDir, meta: false });
+    apiFiles.push(...(src.files as SourceFile[]));
+    apiFiles.push({
+      type: 'meta',
+      path: `${node.baseDir}/meta.json`,
+      data: { title: node.title, pages: flattenApi(node.content) },
+    } as unknown as SourceFile);
+  } else {
+    // Modo auto: todos los endpoints en el orden del archivo.
+    const src = await inst.staticSource({ baseDir: node.baseDir, meta: true });
+    apiFiles.push(...(src.files as SourceFile[]));
+  }
+}
 
 export const source = loader({
   baseUrl: docsRoute,
-  source: { files: [...docsSource.files, ...allApiFiles] },
+  source: { files: [...docsSource.files, ...apiFiles] },
   plugins: [lucideIconsPlugin(), openapi.loaderPlugin()],
 });
 
