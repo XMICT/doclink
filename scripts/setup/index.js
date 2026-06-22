@@ -74,10 +74,11 @@ fs.writeFileSync(path.join(cacheDir, 'nav.json'), JSON.stringify({ apis }, null,
 
 reporter.endModulesTable();
 
-// ── Fase 2: expansión OpenAPI con caché incremental ───────────────────────────
-// Procesa cada spec registrado en la fase 1, con streaming por módulo.
+// ── Fase 2: expansión OpenAPI con caché incremental (paralela) ───────────────
+// Todos los specs se procesan concurrentemente; reporter.done() refleja cada
+// resultado en tiempo real conforme terminan.
 
-function processOpenApi(specPath) {
+async function processOpenApi(specPath) {
   if (processedSpecs.has(specPath)) return;
   processedSpecs.add(specPath);
 
@@ -102,7 +103,7 @@ function processOpenApi(specPath) {
 
   const started = Date.now();
   try {
-    const expanded = expandSpec(spec, backendPath, openapiDir);
+    const expanded = await expandSpec(spec, backendPath, openapiDir);
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(outPath, yaml.dump(expanded, { noRefs: true }));
     newManifest[id] = fingerprint;
@@ -113,7 +114,7 @@ function processOpenApi(specPath) {
 }
 
 reporter.startOpenApiTable();
-for (const api of apis) processOpenApi(api.spec);
+await Promise.all([...new Set(apis.map(a => a.spec))].map(processOpenApi));
 
 const pruned = pruneCache(cacheDir, Object.keys(newManifest));
 saveManifest(manifestPath, newManifest);
