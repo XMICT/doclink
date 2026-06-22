@@ -5,8 +5,8 @@ import yaml from 'js-yaml';
 import { detectExtensions, expandSpec } from '../openapi-expander.js';
 import { resolveNav } from '../nav-resolve.js';
 import { specFingerprint, loadManifest, saveManifest, pruneCache } from './cache.js';
-import { apiId, separatorOf, makeNavLayout } from './modules.js';
-import { renderSyncReport } from './report.js';
+import { apiId, separatorOf, collectModuleTitles, collectApiIds, makeNavLayout } from './modules.js';
+import { createReporter } from './report.js';
 
 // ── Configuración ─────────────────────────────────────────────────────────────
 
@@ -28,7 +28,7 @@ const env = loadEnvLocal();
 const backendRepo = env.BACKEND_REPO ?? process.env.BACKEND_REPO ?? 'backend';
 const backendPath = path.resolve(rootDir, '..', backendRepo);
 const modulesPath = path.join(rootDir, 'modules');
-const cacheDir   = path.join(rootDir, '.openapi-cache');
+const cacheDir    = path.join(rootDir, '.openapi-cache');
 const manifestPath = path.join(cacheDir, '.manifest.json');
 
 if (!fs.existsSync(backendPath)) {
@@ -39,12 +39,43 @@ if (!fs.existsSync(backendPath)) {
 // ── Estado del proceso ────────────────────────────────────────────────────────
 
 const apis = [];
-const syncResults = [];
 const processedSpecs = new Set();
 const manifest = loadManifest(manifestPath);
 const newManifest = {};
 
-// ── Expansión OpenAPI con caché incremental ───────────────────────────────────
+// ── Árbol de navegación + reporter ───────────────────────────────────────────
+
+fs.rmSync(modulesPath, { recursive: true, force: true });
+fs.mkdirSync(modulesPath, { recursive: true });
+
+const tree = resolveNav(backendPath);
+const reporter = createReporter(collectModuleTitles(tree), collectApiIds(tree, backendPath));
+
+// ── Fase 1: sincronización de archivos ────────────────────────────────────────
+// Crea symlinks y meta.json por módulo. Los specs OpenAPI se registran en apis[]
+// pero no se procesan aún — eso ocurre en la fase 2.
+
+reporter.startModulesTable();
+
+const { layoutNode } = makeNavLayout({
+  backendPath, modulesPath, apis,
+  onModuleSync: result => reporter.moduleDone(result),
+});
+
+const rootPages = [];
+for (const section of tree.sections) {
+  rootPages.push(separatorOf(section));
+  for (const node of section.content) rootPages.push(layoutNode(node));
+}
+
+fs.writeFileSync(path.join(modulesPath, 'meta.json'), JSON.stringify({ pages: rootPages }, null, 2) + '\n');
+fs.mkdirSync(cacheDir, { recursive: true });
+fs.writeFileSync(path.join(cacheDir, 'nav.json'), JSON.stringify({ apis }, null, 2) + '\n');
+
+reporter.endModulesTable();
+
+// ── Fase 2: expansión OpenAPI con caché incremental ───────────────────────────
+// Procesa cada spec registrado en la fase 1, con streaming por módulo.
 
 function processOpenApi(specPath) {
   if (processedSpecs.has(specPath)) return;
@@ -56,7 +87,7 @@ function processOpenApi(specPath) {
   const spec = yaml.load(specRaw);
 
   if (!detectExtensions(spec)) {
-    syncResults.push({ id, status: 'plain' });
+    reporter.done({ id, status: 'plain' });
     return;
   }
 
@@ -65,7 +96,7 @@ function processOpenApi(specPath) {
 
   if (manifest[id] === fingerprint && fs.existsSync(outPath)) {
     newManifest[id] = fingerprint;
-    syncResults.push({ id, status: 'cached' });
+    reporter.done({ id, status: 'cached' });
     return;
   }
 
@@ -75,34 +106,16 @@ function processOpenApi(specPath) {
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(outPath, yaml.dump(expanded, { noRefs: true }));
     newManifest[id] = fingerprint;
-    syncResults.push({ id, status: 'built', ms: Date.now() - started });
+    reporter.done({ id, status: 'built', ms: Date.now() - started });
   } catch (err) {
-    syncResults.push({ id, status: 'failed', error: err.message });
+    reporter.done({ id, status: 'failed', error: err.message });
   }
 }
 
-// ── Orquestación ──────────────────────────────────────────────────────────────
-
-fs.rmSync(modulesPath, { recursive: true, force: true });
-fs.mkdirSync(modulesPath, { recursive: true });
-
-const tree = resolveNav(backendPath);
-const { layoutNode } = makeNavLayout({ backendPath, modulesPath, processOpenApi, apis });
-
-const rootPages = [];
-for (const section of tree.sections) {
-  rootPages.push(separatorOf(section));
-  for (const node of section.content) rootPages.push(layoutNode(node));
-}
-
-fs.writeFileSync(path.join(modulesPath, 'meta.json'), JSON.stringify({ pages: rootPages }, null, 2) + '\n');
-console.log('✓ modules/meta.json generado');
-
-fs.mkdirSync(cacheDir, { recursive: true });
-fs.writeFileSync(path.join(cacheDir, 'nav.json'), JSON.stringify({ apis }, null, 2) + '\n');
-console.log(`✓ .openapi-cache/nav.json generado (${apis.length} nodos api)`);
+reporter.startOpenApiTable();
+for (const api of apis) processOpenApi(api.spec);
 
 const pruned = pruneCache(cacheDir, Object.keys(newManifest));
 saveManifest(manifestPath, newManifest);
 
-renderSyncReport(syncResults, pruned);
+reporter.endOpenApiTable(pruned);
