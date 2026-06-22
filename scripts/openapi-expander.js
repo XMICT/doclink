@@ -38,6 +38,13 @@ function introspectSchema(modelName, backendPath) {
   if (schemaCache.has(cacheKey)) return schemaCache.get(cacheKey);
 
   const script = `
+// Stub dialect native packages — we never open a real connection, only introspect model definitions.
+const Module = require('module');
+const _origLoad = Module._load;
+Module._load = function(req, parent, isMain) {
+  if (['sqlite3','pg','pg-hstore','mysql2','mysql','tedious','oracledb','ibm_db'].includes(req)) return {};
+  return _origLoad.apply(this, arguments);
+};
 const { Sequelize, DataTypes } = require('sequelize');
 const { JsonSchemaManager, OpenApi3Strategy } = require('@alt3/sequelize-to-json-schemas');
 const fs = require('fs'), path = require('path');
