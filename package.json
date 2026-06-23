@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "setup": "node scripts/setup.js",
+    "setup": "node scripts/setup/index.js",
     "build": "npm run setup && next build",
     "dev": "npm run setup && next dev",
     "start": "PORT=4000 next start",

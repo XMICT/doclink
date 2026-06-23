@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { spawn } from 'child_process';
 import yaml from 'js-yaml';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -23,14 +23,25 @@ import yaml from 'js-yaml';
 
 // ─── Introspección via @alt3/sequelize-to-json-schemas (instalado en el backend) ─
 
+// Caches almacenan Promises para evitar doble ejecución con llamadas concurrentes.
 const schemaCache = new Map();
+const payloadCache = new Map();
 
 function runBackendScript(script, backendPath) {
-  return execSync('node --input-type=commonjs', {
-    cwd: backendPath,
-    input: script,
-    stdio: ['pipe', 'pipe', 'pipe'],
-  }).toString();
+  return new Promise((resolve, reject) => {
+    const child = spawn('node', ['--input-type=commonjs'], {
+      cwd: backendPath,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', d => stdout += d);
+    child.stderr.on('data', d => stderr += d);
+    child.on('close', code => code !== 0 ? reject(new Error(stderr || `exit ${code}`)) : resolve(stdout));
+    child.on('error', reject);
+    child.stdin.write(script);
+    child.stdin.end();
+  });
 }
 
 function introspectSchema(modelName, backendPath) {
@@ -123,19 +134,18 @@ process.stdout.write('SYSTEM_SCHEMA:' + JSON.stringify({
 }) + '\\n');
 `;
 
-  const raw = runBackendScript(script, backendPath);
-  const marker = 'SYSTEM_SCHEMA:';
-  const line = raw.split('\n').find(l => l.startsWith(marker));
-  if (!line) throw new Error(`No se pudo introspeccionar el modelo ${modelName}`);
+  const promise = runBackendScript(script, backendPath).then(raw => {
+    const marker = 'SYSTEM_SCHEMA:';
+    const line = raw.split('\n').find(l => l.startsWith(marker));
+    if (!line) throw new Error(`No se pudo introspeccionar el modelo ${modelName}`);
+    return JSON.parse(line.slice(marker.length));
+  });
 
-  const result = JSON.parse(line.slice(marker.length));
-  schemaCache.set(cacheKey, result);
-  return result;
+  schemaCache.set(cacheKey, promise);
+  return promise;
 }
 
 // ─── Carga e introspección de payload files ────────────────────────────────────
-
-const payloadCache = new Map();
 
 function loadPayloadSchema(payloadPath, backendPath) {
   const cacheKey = `payload::${payloadPath}`;
@@ -150,16 +160,16 @@ const data = isJoi ? payload.describe() : payload;
 process.stdout.write('SYSTEM_PAYLOAD:' + JSON.stringify({ format: isJoi ? 'joi' : 'ajv', data }) + '\\n');
 `;
 
-  const raw = runBackendScript(script, backendPath);
-  const marker = 'SYSTEM_PAYLOAD:';
-  const line = raw.split('\n').find(l => l.startsWith(marker));
-  if (!line) throw new Error(`No se pudo leer el payload: ${payloadPath}`);
+  const promise = runBackendScript(script, backendPath).then(raw => {
+    const marker = 'SYSTEM_PAYLOAD:';
+    const line = raw.split('\n').find(l => l.startsWith(marker));
+    if (!line) throw new Error(`No se pudo leer el payload: ${payloadPath}`);
+    const { format, data } = JSON.parse(line.slice(marker.length));
+    return format === 'joi' ? convertJoiDescribe(data) : convertAjvSchema(data);
+  });
 
-  const { format, data } = JSON.parse(line.slice(marker.length));
-  const schema = format === 'joi' ? convertJoiDescribe(data) : convertAjvSchema(data);
-
-  payloadCache.set(cacheKey, schema);
-  return schema;
+  payloadCache.set(cacheKey, promise);
+  return promise;
 }
 
 // ─── Conversor AJV → OpenAPI ──────────────────────────────────────────────────
@@ -312,7 +322,7 @@ function resolveFields(fields, ownProperties, excludeSet) {
 
 // Construye las propiedades de asociación a partir de un `include`.
 // Cada entrada es un alias (string) o `{ model: alias, fields: [...] }`.
-function buildAssocSchema(include, schemaData, backendPath) {
+async function buildAssocSchema(include, schemaData, backendPath) {
   const assocSchema = {};
   for (const raw of include) {
     const alias  = typeof raw === 'string' ? raw : raw.model;
@@ -324,7 +334,7 @@ function buildAssocSchema(include, schemaData, backendPath) {
     if (!targetModelName) continue;
 
     try {
-      const target = introspectSchema(targetModelName, backendPath);
+      const target = await introspectSchema(targetModelName, backendPath);
       const entries = fields
         ? fields.map(parseField)
         : Object.keys(target.ownProperties).map(f => ({ field: f, alias: f }));
@@ -340,9 +350,9 @@ function buildAssocSchema(include, schemaData, backendPath) {
 }
 
 // `type: model` → schema inline siempre (campos propios + asociaciones).
-function expandModelSchema(node, ctx) {
+async function expandModelSchema(node, ctx) {
   const include    = node.include ?? [];
-  const schemaData = introspectSchema(node.model, ctx.backendPath);
+  const schemaData = await introspectSchema(node.model, ctx.backendPath);
   const excludeSet = resolveExclude(node.exclude, schemaData.virtuals ?? []);
 
   const properties = {};
@@ -350,7 +360,7 @@ function expandModelSchema(node, ctx) {
     if (excludeSet.has(k)) continue;
     properties[k] = { ...v };
   }
-  Object.assign(properties, buildAssocSchema(include, schemaData, ctx.backendPath));
+  Object.assign(properties, await buildAssocSchema(include, schemaData, ctx.backendPath));
 
   const required = (schemaData.required ?? []).filter(f => !excludeSet.has(f) && properties[f]);
   const out = { type: 'object', properties };
@@ -361,9 +371,9 @@ function expandModelSchema(node, ctx) {
 }
 
 // `{ model, fields: [campo] }` sin `type` → schema del campo individual del modelo.
-function expandFieldSchema(node, ctx) {
+async function expandFieldSchema(node, ctx) {
   const { field } = parseField(node.fields[0]);
-  const schemaData = introspectSchema(node.model, ctx.backendPath);
+  const schemaData = await introspectSchema(node.model, ctx.backendPath);
   const prop = schemaData.ownProperties[field];
   return prop ? { ...prop } : { type: 'string' };
 }
@@ -371,8 +381,8 @@ function expandFieldSchema(node, ctx) {
 // Entrada `{ model, fields, exclude, in? }` en `parameters` → params del modelo.
 // Si `in` es "path": required:true, sin body_filtro.
 // Si `in` está ausente o es "query": query params + body_filtro.
-function buildModelParams(entry, ctx) {
-  const schemaData = introspectSchema(entry.model, ctx.backendPath);
+async function buildModelParams(entry, ctx) {
+  const schemaData = await introspectSchema(entry.model, ctx.backendPath);
   const excludeSet = resolveExclude(entry.exclude, schemaData.virtuals ?? []);
   const fields     = resolveFields(entry.fields, schemaData.ownProperties ?? {}, excludeSet);
   const location   = entry.in ?? 'query';
@@ -405,20 +415,18 @@ function buildModelParams(entry, ctx) {
 
 // ─── Walker recursivo: resuelve marcadores y deja pasar el resto ───────────────
 
-function expandParameters(arr, ctx) {
-  const out = [];
-  for (const entry of arr) {
+async function expandParameters(arr, ctx) {
+  const results = await Promise.all(arr.map(entry => {
     if (entry && typeof entry === 'object' && entry.model && !entry.name && !entry.$ref) {
-      out.push(...buildModelParams(entry, ctx));
-    } else {
-      out.push(expandNode(entry, ctx));
+      return buildModelParams(entry, ctx);
     }
-  }
-  return out;
+    return expandNode(entry, ctx).then(n => [n]);
+  }));
+  return results.flat();
 }
 
-function expandNode(node, ctx) {
-  if (Array.isArray(node)) return node.map(n => expandNode(n, ctx));
+async function expandNode(node, ctx) {
+  if (Array.isArray(node)) return Promise.all(node.map(n => expandNode(n, ctx)));
   if (!node || typeof node !== 'object') return node;
 
   // Resolver $ref a archivo externo (./file.yaml#/Pointer)
@@ -437,17 +445,14 @@ function expandNode(node, ctx) {
     return expandFieldSchema(node, ctx);
   }
 
-  const out = {};
-  for (const [k, v] of Object.entries(node)) {
-    if (k === 'parameters' && Array.isArray(v)) {
-      out[k] = expandParameters(v, ctx);
-    } else if (k === 'schema' && typeof v === 'string') {
-      out[k] = loadPayloadSchema(path.resolve(ctx.openapiDir, v), ctx.backendPath);
-    } else {
-      out[k] = expandNode(v, ctx);
-    }
-  }
-  return out;
+  const entries = await Promise.all(
+    Object.entries(node).map(async ([k, v]) => {
+      if (k === 'parameters' && Array.isArray(v)) return [k, await expandParameters(v, ctx)];
+      if (k === 'schema' && typeof v === 'string') return [k, await loadPayloadSchema(path.resolve(ctx.openapiDir, v), ctx.backendPath)];
+      return [k, await expandNode(v, ctx)];
+    })
+  );
+  return Object.fromEntries(entries);
 }
 
 // ─── Detección de marcadores ───────────────────────────────────────────────────
@@ -478,7 +483,7 @@ export function detectExtensions(spec) {
 
 // ─── Función principal ────────────────────────────────────────────────────────
 
-export function expandSpec(spec, backendPath, openapiDir) {
+export async function expandSpec(spec, backendPath, openapiDir) {
   const result = structuredClone(spec);
 
   delete result['x-enums'];
@@ -486,9 +491,9 @@ export function expandSpec(spec, backendPath, openapiDir) {
   const ctx = { backendPath, openapiDir };
 
   if (result.components?.schemas) {
-    result.components.schemas = expandNode(result.components.schemas, ctx);
+    result.components.schemas = await expandNode(result.components.schemas, ctx);
   }
-  if (result.paths) result.paths = expandNode(result.paths, ctx);
+  if (result.paths) result.paths = await expandNode(result.paths, ctx);
 
   return result;
 }
