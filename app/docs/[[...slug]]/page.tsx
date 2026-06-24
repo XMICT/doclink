@@ -42,7 +42,6 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mdxData = page.data as any;
   const MDX = mdxData.body;
   const markdownUrl = getPageMarkdownUrl(page).url;
