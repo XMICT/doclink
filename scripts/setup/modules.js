@@ -60,11 +60,16 @@ export function collectApiIds(tree, backendPath) {
 // onModuleSync: callback({ title, id, fileCount, status }) llamado por grupo/página procesada.
 // apis: array mutado in-place con los specs api encontrados (se procesan en index.js).
 
-export function makeNavLayout({ backendPath, modulesPath, apis, onModuleSync }) {
+export function makeNavLayout({ backendPath, modulesPath, apis, onModuleSync, pathMap }) {
   function registerApi(node) {
     const id = apiId(node.spec, backendPath);
     apis.push({ id, title: node.title, spec: node.spec, mode: node.mode, baseDir: `${id}/api`, content: node.content ?? null });
     return id;
+  }
+
+  // Registra la ubicación lógica de un archivo físico para resolución de enlaces
+  function trackFile(absFile, logicalDir) {
+    if (pathMap) pathMap.set(absFile, logicalDir);
   }
 
   function layoutGroup(group, forceDir = null) {
@@ -81,14 +86,16 @@ export function makeNavLayout({ backendPath, modulesPath, apis, onModuleSync }) 
       if (child.type === 'page') {
         // Si forceDir está set (subgrupo), crear symlink dentro de esa carpeta
         if (forceDir) {
-          const { prefix, rest } = splitDocs(child.file, backendPath);
+          const { rest } = splitDocs(child.file, backendPath);
           const target = path.join(modulesPath, forceDir, rest[rest.length - 1]);
           fs.mkdirSync(path.dirname(target), { recursive: true });
           if (!fs.existsSync(target)) fs.symlinkSync(child.file, target);
+          trackFile(child.file, forceDir);
           pages.push(stripExt(rest[rest.length - 1]));
           fileCount++;
         } else {
           const { folderRel, name } = symlinkPage(child.file, backendPath, modulesPath);
+          trackFile(child.file, folderRel);
           setDir(folderRel); pages.push(name); fileCount++;
         }
       } else if (child.type === 'api') {
@@ -128,6 +135,7 @@ export function makeNavLayout({ backendPath, modulesPath, apis, onModuleSync }) 
     switch (node.type) {
       case 'page': {
         const { folderRel, name } = symlinkPage(node.file, backendPath, modulesPath);
+        trackFile(node.file, folderRel);
         onModuleSync({ title: node.title, id: name, fileCount: 1, status: 'synced' });
         return folderRel ? `${folderRel}/${name}` : name;
       }

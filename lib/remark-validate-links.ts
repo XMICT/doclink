@@ -10,11 +10,11 @@ import type { VFile } from 'vfile';
  * Para cada enlace a un archivo `.md`/`.mdx` (relativo, p.ej.
  * `../compra/introduccion.mdx#anchor`), comprueba que el destino existe.
  *
- * Importante: el href se resuelve igual que en runtime (`createRelativeLink` →
- * `source.resolveHref`), es decir contra la ruta **lógica de `modules/`** (con el
- * segmento `docs/` elidido), no contra la ruta física del archivo en el backend.
- * Por eso traducimos la ruta física del MDX a su equivalente en `modules/` antes
- * de resolver. Si el destino no existe, rompe el build con la ubicación del enlace.
+ * El href se resuelve contra la ubicación lógica del archivo en `modules/`,
+ * NO contra su ruta física en el backend. Esto es necesario porque los
+ * subgrupos colocan archivos en subcarpetas (ej. `modules/nextfuel/casos-de-uso/`)
+ * que no coinciden con la ruta física. El mapa `path-map.json` generado por
+ * setup.js mapea cada archivo físico a su directorio lógico.
  */
 
 const FILE_LINK = /\.mdx?(#.*)?$/;
@@ -37,10 +37,27 @@ const cwd = process.cwd();
 const backendRepo = loadEnvLocal().BACKEND_REPO ?? process.env.BACKEND_REPO ?? 'backend';
 const backendPath = path.resolve(cwd, '..', backendRepo);
 const modulesPath = path.join(cwd, 'modules');
+const cacheDir = path.join(cwd, '.openapi-cache');
 
-// Traduce la ruta física de un MDX del backend a su directorio lógico en modules/
-// (calcando carpetas, elidiendo `docs/`). Devuelve null si no aplica.
+// Carga el mapa físico → lógico generado por setup.js
+function loadPathMap(): Map<string, string> {
+  const mapPath = path.join(cacheDir, 'path-map.json');
+  if (!fs.existsSync(mapPath)) return new Map();
+  const raw = JSON.parse(fs.readFileSync(mapPath, 'utf-8')) as Record<string, string>;
+  return new Map(Object.entries(raw));
+}
+
+const pathMap = loadPathMap();
+
+// Devuelve el directorio lógico en modules/ donde está colocado un archivo físico.
+// Usa el mapa generado por setup.js; si no está en el mapa, cae al cálculo por elisión de docs/.
 function modulesDirOf(filePath: string): string | null {
+  // Buscar en el pathMap (clave = ruta absoluta del archivo físico)
+  const logicalDir = pathMap.get(filePath);
+  if (logicalDir !== undefined) {
+    return path.join(modulesPath, logicalDir);
+  }
+  // Fallback: calcular elidiendo docs/ (para archivos no registrados en el mapa)
   const rel = path.relative(backendPath, filePath);
   if (rel.startsWith('..')) return null;
   const parts = rel.split(path.sep);

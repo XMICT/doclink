@@ -42,6 +42,7 @@ const apis = [];
 const processedSpecs = new Set();
 const manifest = loadManifest(manifestPath);
 const newManifest = {};
+const pathMap = new Map(); // físico → lógico (para validador de enlaces)
 
 // ── Árbol de navegación + reporter ───────────────────────────────────────────
 
@@ -58,7 +59,7 @@ const reporter = createReporter(collectModuleTitles(tree), collectApiIds(tree, b
 reporter.startModulesTable();
 
 const { layoutNode } = makeNavLayout({
-  backendPath, modulesPath, apis,
+  backendPath, modulesPath, apis, pathMap,
   onModuleSync: result => reporter.moduleDone(result),
 });
 
@@ -71,6 +72,7 @@ for (const section of tree.sections) {
 fs.writeFileSync(path.join(modulesPath, 'meta.json'), JSON.stringify({ pages: rootPages }, null, 2) + '\n');
 fs.mkdirSync(cacheDir, { recursive: true });
 fs.writeFileSync(path.join(cacheDir, 'nav.json'), JSON.stringify({ apis }, null, 2) + '\n');
+fs.writeFileSync(path.join(cacheDir, 'path-map.json'), JSON.stringify(Object.fromEntries(pathMap), null, 2) + '\n');
 
 reporter.endModulesTable();
 

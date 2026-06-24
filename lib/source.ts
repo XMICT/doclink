@@ -8,65 +8,27 @@ const docsSource = docs.toFumadocsSource();
 
 type SourceFile = (typeof docsSource.files)[number];
 
-function slugify(s: string): string {
-  return s.toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-}
-
 // Construye los archivos virtuales para un api manual.
-// Si el contenido tiene grupos en el primer nivel, los convierte en subcarpetas
-// colapsables (cada grupo → meta.json propio + rutas remapeadas).
-// Si solo hay páginas sueltas, produce un meta.json plano.
+// Las URLs son planas (api/operationId) sin importar la estructura de grupos en nav.json.
+// Los grupos solo organizan el nav.json del backend; aquí se aplanan en un solo meta.json.
 function buildManualApiFiles(srcFiles: SourceFile[], node: ApiNode): SourceFile[] {
   const content = node.content!;
   const base = node.baseDir;
 
-  const hasGroups = content.some(n => n.type === 'group');
-
-  if (!hasGroups) {
-    const pages = content.filter(n => n.type === 'page').map(n => (n as ApiManualNode).op!);
-    return [
-      ...srcFiles,
-      { type: 'meta', path: `${base}/meta.json`, data: { title: node.title, pages } } as unknown as SourceFile,
-    ];
-  }
-
-  const opToSlug = new Map<string, string>();
-  const groups: { slug: string; title: string; pages: string[] }[] = [];
-  const rootPages: string[] = [];
-
-  for (const item of content) {
-    if (item.type === 'group') {
-      const slug = slugify(item.title);
-      // pages en meta.json son slugs sin extensión
-      const pages = (item.content ?? []).filter(c => c.type === 'page').map(c => c.op!);
-      pages.forEach(op => opToSlug.set(op, slug));
-      groups.push({ slug, title: item.title, pages });
-    } else if (item.type === 'page') {
-      rootPages.push(item.op!);
+  // Recopilar todos los operationIds en orden, sin importar si están en grupos o sueltos
+  const pages: string[] = [];
+  function collectOps(items: ApiManualNode[]) {
+    for (const item of items) {
+      if (item.type === 'page' && item.op) pages.push(item.op);
+      if (item.type === 'group' && item.content) collectOps(item.content);
     }
   }
+  collectOps(content);
 
-  const files: SourceFile[] = srcFiles.map(f => {
-    const fileName = (f.path as string).split('/').pop()!;
-    const ext = fileName.endsWith('.mdx') ? '.mdx' : '';
-    const opId = ext ? fileName.slice(0, -ext.length) : fileName;
-    const slug = opToSlug.get(opId);
-    return slug ? { ...f, path: `${base}/${slug}/${fileName}` } : f;
-  });
-
-  for (const g of groups) {
-    files.push({ type: 'meta', path: `${base}/${g.slug}/meta.json`, data: { title: g.title, pages: g.pages } } as unknown as SourceFile);
-  }
-
-  files.push({
-    type: 'meta',
-    path: `${base}/meta.json`,
-    data: { title: node.title, pages: [...rootPages, ...groups.map(g => g.slug)] },
-  } as unknown as SourceFile);
-
-  return files;
+  return [
+    ...srcFiles,
+    { type: 'meta', path: `${base}/meta.json`, data: { title: node.title, pages } } as unknown as SourceFile,
+  ];
 }
 
 const apiFiles: SourceFile[] = [];
