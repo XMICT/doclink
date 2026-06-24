@@ -67,32 +67,49 @@ export function makeNavLayout({ backendPath, modulesPath, apis, onModuleSync }) 
     return id;
   }
 
-  function layoutGroup(group) {
+  function layoutGroup(group, forceDir = null) {
     const pages = [];
-    let groupDir = null;
+    let groupDir = forceDir;
     let fileCount = 0;
 
     const setDir = dir => {
       if (groupDir === null) { groupDir = dir; return; }
-      if (groupDir !== dir) console.warn(`⚠ grupo "${group.title}": hijos en carpetas distintas (${groupDir} vs ${dir}). v1 soporta grupos co-localados; se usa ${groupDir}.`);
+      if (dir !== groupDir) console.warn(`⚠ grupo "${group.title}": hijos en carpetas distintas (${groupDir} vs ${dir}). v1 soporta grupos co-localados; se usa ${groupDir}.`);
     };
 
     for (const child of group.content) {
       if (child.type === 'page') {
-        const { folderRel, name } = symlinkPage(child.file, backendPath, modulesPath);
-        setDir(folderRel); pages.push(name); fileCount++;
+        // Si forceDir está set (subgrupo), crear symlink dentro de esa carpeta
+        if (forceDir) {
+          const { prefix, rest } = splitDocs(child.file, backendPath);
+          const target = path.join(modulesPath, forceDir, rest[rest.length - 1]);
+          fs.mkdirSync(path.dirname(target), { recursive: true });
+          if (!fs.existsSync(target)) fs.symlinkSync(child.file, target);
+          pages.push(stripExt(rest[rest.length - 1]));
+          fileCount++;
+        } else {
+          const { folderRel, name } = symlinkPage(child.file, backendPath, modulesPath);
+          setDir(folderRel); pages.push(name); fileCount++;
+        }
       } else if (child.type === 'api') {
         setDir(registerApi(child)); pages.push('api');
       } else if (child.type === 'group') {
-        pages.push(separatorOf(child));
-        for (const sub of child.content) {
-          if (sub.type === 'page') {
-            const { folderRel, name } = symlinkPage(sub.file, backendPath, modulesPath);
-            setDir(folderRel); pages.push(name); fileCount++;
-          } else if (sub.type === 'api') {
-            registerApi(sub); pages.push('api');
+        // Subgrupo: crear su carpeta DENTRO de la carpeta actual (groupDir)
+        const subGroupSlug = child.title.toLowerCase().replace(/\s+/g, '-');
+        // groupDir puede estar null si aún no hemos visto páginas; derivarlo del primer hijo del subgrupo
+        let parentForSub = groupDir;
+        if (parentForSub === null) {
+          // Derivar de la primera página del subgrupo
+          const firstPage = child.content.find(c => c.type === 'page');
+          if (firstPage) {
+            const { folderRel } = symlinkPage(firstPage.file, backendPath, modulesPath);
+            parentForSub = folderRel;
           }
         }
+        const subGroupDir = parentForSub ? `${parentForSub}/${subGroupSlug}` : subGroupSlug;
+        layoutGroup(child, subGroupDir);
+        setDir(parentForSub || '');
+        pages.push(subGroupSlug);
       }
     }
 
