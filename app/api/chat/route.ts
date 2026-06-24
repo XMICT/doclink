@@ -31,7 +31,6 @@ async function createSearchServer() {
         title: page.data.title,
         description: page.data.description,
         url: page.url,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         content: await (page.data as any).getText('processed'),
       } as CustomDocument;
     }),

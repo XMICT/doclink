@@ -2,25 +2,71 @@ import { docs } from 'collections/server';
 import { loader } from 'fumadocs-core/source';
 import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
 import { docsContentRoute, docsImageRoute, docsRoute } from './shared';
-import { openapi, openapiByModule, apiNodes, type ApiManualNode } from './openapi';
+import { openapi, openapiByModule, apiNodes, type ApiNode, type ApiManualNode } from './openapi';
 
 const docsSource = docs.toFumadocsSource();
 
 type SourceFile = (typeof docsSource.files)[number];
 
-// Modo manual: aplana el árbol de operationId a `pages[]` de fumadocs,
-// usando separadores para los grupos. Los endpoints no listados quedan fuera.
-function flattenApi(content: ApiManualNode[]): string[] {
-  const pages: string[] = [];
-  for (const node of content) {
-    if (node.type === 'group') {
-      pages.push(`---${node.title}---`);
-      if (node.content) pages.push(...flattenApi(node.content));
-    } else if (node.type === 'page' && node.op) {
-      pages.push(node.op);
+function slugify(s: string): string {
+  return s.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+// Construye los archivos virtuales para un api manual.
+// Si el contenido tiene grupos en el primer nivel, los convierte en subcarpetas
+// colapsables (cada grupo → meta.json propio + rutas remapeadas).
+// Si solo hay páginas sueltas, produce un meta.json plano.
+function buildManualApiFiles(srcFiles: SourceFile[], node: ApiNode): SourceFile[] {
+  const content = node.content!;
+  const base = node.baseDir;
+
+  const hasGroups = content.some(n => n.type === 'group');
+
+  if (!hasGroups) {
+    const pages = content.filter(n => n.type === 'page').map(n => (n as ApiManualNode).op!);
+    return [
+      ...srcFiles,
+      { type: 'meta', path: `${base}/meta.json`, data: { title: node.title, pages } } as unknown as SourceFile,
+    ];
+  }
+
+  const opToSlug = new Map<string, string>();
+  const groups: { slug: string; title: string; pages: string[] }[] = [];
+  const rootPages: string[] = [];
+
+  for (const item of content) {
+    if (item.type === 'group') {
+      const slug = slugify(item.title);
+      // pages en meta.json son slugs sin extensión
+      const pages = (item.content ?? []).filter(c => c.type === 'page').map(c => c.op!);
+      pages.forEach(op => opToSlug.set(op, slug));
+      groups.push({ slug, title: item.title, pages });
+    } else if (item.type === 'page') {
+      rootPages.push(item.op!);
     }
   }
-  return pages;
+
+  const files: SourceFile[] = srcFiles.map(f => {
+    const fileName = (f.path as string).split('/').pop()!;
+    const ext = fileName.endsWith('.mdx') ? '.mdx' : '';
+    const opId = ext ? fileName.slice(0, -ext.length) : fileName;
+    const slug = opToSlug.get(opId);
+    return slug ? { ...f, path: `${base}/${slug}/${fileName}` } : f;
+  });
+
+  for (const g of groups) {
+    files.push({ type: 'meta', path: `${base}/${g.slug}/meta.json`, data: { title: g.title, pages: g.pages } } as unknown as SourceFile);
+  }
+
+  files.push({
+    type: 'meta',
+    path: `${base}/meta.json`,
+    data: { title: node.title, pages: [...rootPages, ...groups.map(g => g.slug)] },
+  } as unknown as SourceFile);
+
+  return files;
 }
 
 const apiFiles: SourceFile[] = [];
@@ -28,18 +74,11 @@ for (const node of apiNodes) {
   const inst = openapiByModule[node.id];
   if (!inst) continue;
 
+  const src = await inst.staticSource({ baseDir: node.baseDir, meta: node.mode === 'auto' });
+
   if (node.mode === 'manual' && node.content) {
-    // Sin meta auto: lo construimos nosotros para seleccionar/ordenar.
-    const src = await inst.staticSource({ baseDir: node.baseDir, meta: false });
-    apiFiles.push(...(src.files as SourceFile[]));
-    apiFiles.push({
-      type: 'meta',
-      path: `${node.baseDir}/meta.json`,
-      data: { title: node.title, pages: flattenApi(node.content) },
-    } as unknown as SourceFile);
+    apiFiles.push(...buildManualApiFiles(src.files as SourceFile[], node));
   } else {
-    // Modo auto: todos los endpoints en el orden del archivo.
-    const src = await inst.staticSource({ baseDir: node.baseDir, meta: true });
     apiFiles.push(...(src.files as SourceFile[]));
   }
 }
@@ -67,7 +106,6 @@ export function getPageMarkdownUrl(page: (typeof source)['$inferPage']) {
 }
 
 export async function getLLMText(page: (typeof source)['$inferPage']) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data = page.data as any;
   if (typeof data.getText === 'function') {
     const processed = await data.getText('processed');
