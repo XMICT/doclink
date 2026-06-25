@@ -78,6 +78,7 @@ export function makeNavLayout({ backendPath, modulesPath, apis, onModuleSync }) 
     };
 
     for (const child of group.content) {
+      console.log(child.file);
       if (child.type === 'page') {
         // Si forceDir está set (subgrupo), crear symlink dentro de esa carpeta
         if (forceDir) {

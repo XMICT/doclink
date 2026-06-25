@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Estilo de programación y commits
+
+**Antes de escribir o modificar cualquier código**, lee y aplica [`CODING_STYLE.md`](CODING_STYLE.md). Contiene los principios, convenciones de nomenclatura, patrones de arquitectura y reglas de estilo que definen cómo se programa en este proyecto. No son sugerencias — son reglas que se siguen al pie de la letra.
+
+**Antes de generar cualquier mensaje de commit**, usa el formato definido en [`COMMIT_STYLE.md`](COMMIT_STYLE.md). El formato varía según si el cambio tiene ticket (SS-, N-, T-, S-), rama técnica, o es un fix puntual sin ticket.
+
 ## Commands
 
 ```bash
@@ -20,26 +26,19 @@ No hay suite de tests en este repositorio.
 
 ### Flujo de arranque
 
-1. `scripts/setup.js` lee `../[BACKEND_REPO]/docs.json` y crea symlinks en `modules/` apuntando a los directorios de docs del backend.
+1. `scripts/index.js` resuelve el árbol de navegación desde `../[BACKEND_REPO]/docs/index.json`, crea symlinks en `modules/` y expande los specs OpenAPI. Ver [`scripts/CLAUDE.md`](scripts/CLAUDE.md) para la documentación completa del pipeline.
 2. `modules/` está en `.gitignore` y se regenera en cada `dev`/`build`.
 3. `source.config.ts` define la colección Fumadocs MDX apuntando a `modules/`.
 4. `lib/source.ts` es el hub central: inicializa el `loader` de Fumadocs combinando las páginas MDX con páginas virtuales OpenAPI, y exporta `getPageImage`, `getPageMarkdownUrl` y `getLLMText`.
-5. `lib/openapi.ts` lee los archivos `openapi.yaml` de cada módulo del backend usando `fumadocs-openapi`.
+5. `lib/openapi.ts` lee `.openapi-cache/nav.json` (generado por el pipeline) y crea instancias OpenAPI por módulo usando `fumadocs-openapi`.
 
 ### Symlinks y webpack
 
 `next.config.mjs` establece `config.resolve.symlinks = true` y `outputFileTracingRoot` al directorio padre del repo. Esto es imprescindible para que webpack resuelva los symlinks de `modules/` hacia el backend hermano.
 
-### Marcadores OpenAPI custom (`scripts/openapi-expander.js`)
+### Pipeline de build (`scripts/`)
 
-`setup.js` llama a `openapi-expander.js` para expandir los YAML de cada módulo. El expander resuelve tres marcadores que reutilizan los modelos Sequelize y payloads Joi/AJV del backend:
-
-- `parameters: [{ model, fields, exclude, in? }]` — inyecta parámetros query/path desde un modelo Sequelize.
-- `schema: { type: model, model, include, exclude }` — genera un schema inline introspectando el modelo.
-- `requestBody: { schema: "<ruta>" }` — carga y convierte un payload Joi o AJV del backend.
-- `type: catalog` — expande un campo enum declarado en `x-enums`.
-
-El expander ejecuta scripts Node directamente en el contexto del backend via `execSync`.
+Ver [`scripts/CLAUDE.md`](scripts/CLAUDE.md) para la documentación completa: árbol de navegación, creación de symlinks, expansión OpenAPI con caché incremental y marcadores custom (`type: model`, `parameters` con modelo Sequelize, `requestBody` con payload Joi/AJV, `type: catalog`).
 
 ### Capas arquitectónicas
 
@@ -69,4 +68,4 @@ Copiar `.env.template` a `.env.local`:
 | `API_URL` | URL base para el playground OpenAPI interactivo |
 | `LLM_GATEWAY_API_KEY` | Clave para el gateway LLM del chat de IA |
 
-El backend debe existir en `../<BACKEND_REPO>/` con un `docs.json` en su raíz.
+El backend debe existir en `../<BACKEND_REPO>/` con un `docs/index.json` en su raíz (árbol de navegación) y fragmentos `[modulo]/docs/nav.json` por módulo.
