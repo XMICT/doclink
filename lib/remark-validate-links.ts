@@ -57,6 +57,16 @@ function modulesDirOf(filePath: string): string | null {
   return symlinkDirMap.get(filePath) ?? null;
 }
 
+// Directorios virtuales de fumadocs-openapi: no existen en disco, no validar con existsSync.
+const apiDirs = new Set<string>();
+const navCachePath = path.join(cwd, '.openapi-cache', 'nav.json');
+if (fs.existsSync(navCachePath)) {
+  const { apis } = JSON.parse(fs.readFileSync(navCachePath, 'utf-8')) as { apis: { baseDir: string }[] };
+  for (const api of (apis ?? [])) {
+    apiDirs.add(path.join(modulesPath, ...api.baseDir.split('/')));
+  }
+}
+
 export function remarkValidateLinks() {
   return (tree: Root, file: VFile) => {
     if (!file.path) return;
@@ -71,7 +81,8 @@ export function remarkValidateLinks() {
 
       const target = href.split('#')[0];
       const resolved = path.resolve(baseDir, target);
-      if (!fs.existsSync(resolved)) {
+      const isApiPage = [...apiDirs].some(d => resolved === d || resolved.startsWith(d + path.sep));
+      if (!isApiPage && !fs.existsSync(resolved)) {
         const line = node.position?.start.line;
         broken.push(`  → "${href}"${line ? ` (línea ${line})` : ''}`);
       }
