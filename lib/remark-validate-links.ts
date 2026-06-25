@@ -38,17 +38,23 @@ const backendRepo = loadEnvLocal().BACKEND_REPO ?? process.env.BACKEND_REPO ?? '
 const backendPath = path.resolve(cwd, '..', backendRepo);
 const modulesPath = path.join(cwd, 'modules');
 
-// Traduce la ruta física de un MDX del backend a su directorio lógico en modules/
-// (calcando carpetas, elidiendo `docs/`). Devuelve null si no aplica.
+// Mapa: ruta real del backend → directorio del symlink en modules/.
+// Refleja exactamente dónde quedó cada archivo tras el pipeline (incluye ../  de subgrupos).
+const symlinkDirMap = new Map<string, string>();
+function buildSymlinkMap(dir: string) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isSymbolicLink()) {
+      try { symlinkDirMap.set(fs.realpathSync(full), path.dirname(full)); } catch { /* symlink roto */ }
+    } else if (entry.isDirectory()) {
+      buildSymlinkMap(full);
+    }
+  }
+}
+if (fs.existsSync(modulesPath)) buildSymlinkMap(modulesPath);
+
 function modulesDirOf(filePath: string): string | null {
-  const rel = path.relative(backendPath, filePath);
-  if (rel.startsWith('..')) return null;
-  const parts = rel.split(path.sep);
-  const i = parts.indexOf('docs');
-  if (i === -1) return null;
-  const prefix = parts.slice(0, i);
-  const rest = parts.slice(i + 1);
-  return path.join(modulesPath, ...prefix, ...rest.slice(0, -1));
+  return symlinkDirMap.get(filePath) ?? null;
 }
 
 export function remarkValidateLinks() {
