@@ -63,16 +63,6 @@ export function makeNavLayout({ backendPath, modulesPath, apis, onModuleSync }) 
     return rel === '.' ? '' : rel;
   }
 
-  // Crea symlink de `file` dentro de un directorio específico de modules/.
-  function symlinkToDir(file, dir) {
-    const { rest } = splitDocs(file, backendPath);
-    const filename = rest[rest.length - 1];
-    const target   = path.join(modulesPath, dir, filename);
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    if (!fs.existsSync(target)) fs.symlinkSync(file, target);
-    return stripExt(filename);
-  }
-
   function registerApi(node) {
     const id = apiId(node.spec, backendPath);
     apis.push({ id, title: node.title, spec: node.spec, mode: node.mode, baseDir: `${id}/api`, content: node.content ?? null });
@@ -92,10 +82,12 @@ export function makeNavLayout({ backendPath, modulesPath, apis, onModuleSync }) 
 
     for (const child of content) {
       if (child.type === 'page') {
+        const { folderRel, name } = symlinkPage(child.file, backendPath, modulesPath);
         if (forceDir) {
-          pages.push(symlinkToDir(child.file, forceDir));
+          // ponytail: la página vive en su ubicación natural; el meta.json del subgrupo la referencia con ../
+          const logical = folderRel ? `${folderRel}/${name}` : name;
+          pages.push(path.relative(forceDir, logical));
         } else {
-          const { folderRel, name } = symlinkPage(child.file, backendPath, modulesPath);
           setDir(folderRel);
           pages.push(name);
         }
