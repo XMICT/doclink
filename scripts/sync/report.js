@@ -1,9 +1,16 @@
 const SPINNER = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏';
 
+const STATUS_META = {
+  built:  { icon: '✓', label: 'reconstruido',   colorKey: 'green' },
+  cached: { icon: '↻', label: 'en caché',       colorKey: 'cyan'  },
+  plain:  { icon: '○', label: 'sin marcadores', colorKey: 'gray'  },
+  failed: { icon: '✗', label: 'error',          colorKey: 'red'   },
+};
+
 export function createReporter(moduleTitles, apiIds) {
   const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
-  const isTTY = !!process.stdout.isTTY;
-  const palette = {
+  const isTTY    = !!process.stdout.isTTY;
+  const palette  = {
     reset: '\x1b[0m', dim: '\x1b[2m', bold: '\x1b[1m',
     green: '\x1b[32m', cyan: '\x1b[36m', yellow: '\x1b[33m', red: '\x1b[31m', gray: '\x1b[90m',
   };
@@ -14,6 +21,8 @@ export function createReporter(moduleTitles, apiIds) {
 
   const modResults = [];
   const apiResults = [];
+
+  let handleDone = result => { apiResults.push(result); };
 
   // ── Helpers de render ─────────────────────────────────────────────────────
 
@@ -29,18 +38,13 @@ export function createReporter(moduleTitles, apiIds) {
   }
 
   function apiLineContent(r) {
-    const statusMeta = {
-      built:  { icon: '✓', label: 'reconstruido',   color: c.green },
-      cached: { icon: '↻', label: 'en caché',       color: c.cyan },
-      plain:  { icon: '○', label: 'sin marcadores', color: c.gray },
-      failed: { icon: '✗', label: 'error',          color: c.red },
-    };
-    const m = statusMeta[r.status];
+    const { icon, label, colorKey } = STATUS_META[r.status];
+    const color = c[colorKey];
     const tail =
       r.status === 'built'  ? `${(r.ms / 1000).toFixed(1)}s` :
       r.status === 'cached' ? 'sin cambios' :
       r.status === 'failed' ? r.error : '';
-    return `  ${m.color}${m.icon}${c.reset}  ${c.bold}${r.id.padEnd(apiW)}${c.reset}  ${m.color}${m.label.padEnd(15)}${c.reset}${c.dim}${tail}${c.reset}`;
+    return `  ${color}${icon}${c.reset}  ${c.bold}${r.id.padEnd(apiW)}${c.reset}  ${color}${label.padEnd(15)}${c.reset}${c.dim}${tail}${c.reset}`;
   }
 
   function pendingLineContent(id, frame) {
@@ -78,13 +82,11 @@ export function createReporter(moduleTitles, apiIds) {
       const N = apiIds.length;
       if (!N) return;
 
-      // Estado por módulo: índice y si ya terminó.
-      const pending = new Set(apiIds);
-      const indexMap = Object.fromEntries(apiIds.map((id, i) => [id, i]));
+      const pending   = new Set(apiIds);
+      const indexMap  = Object.fromEntries(apiIds.map((id, i) => [id, i]));
       let spinnerFrame = 0;
 
       if (isTTY) {
-        // Imprime todas las líneas "procesando..." y arranca el spinner.
         for (const id of apiIds) console.log(pendingLineContent(id, spinnerFrame));
 
         const interval = setInterval(() => {
@@ -92,24 +94,21 @@ export function createReporter(moduleTitles, apiIds) {
           for (const id of pending) updateLine(indexMap[id], N, pendingLineContent(id, spinnerFrame));
         }, 80);
 
-        // done() en TTY: actualiza la línea correspondiente in-place.
-        this.done = result => {
+        handleDone = result => {
           apiResults.push(result);
           pending.delete(result.id);
           updateLine(indexMap[result.id], N, apiLineContent(result));
           if (pending.size === 0) clearInterval(interval);
         };
       } else {
-        // Sin TTY: streaming simple, sin cursor movement.
-        this.done = result => {
+        handleDone = result => {
           apiResults.push(result);
           console.log(apiLineContent(result));
         };
       }
     },
 
-    // Sobreescrito por startOpenApiTable() según el modo TTY.
-    done(result) { apiResults.push(result); },
+    done(result) { handleDone(result); },
 
     endOpenApiTable(pruned) {
       if (!apiIds.length) return;

@@ -3,12 +3,12 @@ import path from 'path';
 
 // ── Helpers de rutas ──────────────────────────────────────────────────────────
 
-// Divide una ruta absoluta de archivo en { prefix, rest } alrededor del segmento `docs`.
+// Divide una ruta absoluta en { prefix, rest } alrededor del segmento `docs`.
 // backend/compra/docs/introduccion.mdx → prefix ['compra'], rest ['introduccion.mdx'].
 function splitDocs(absFile, backendPath) {
-  const rel = path.relative(backendPath, absFile);
+  const rel   = path.relative(backendPath, absFile);
   const parts = rel.split(path.sep);
-  const i = parts.indexOf('docs');
+  const i     = parts.indexOf('docs');
   if (i === -1) throw new Error(`Ruta de contenido sin carpeta docs/: ${rel}`);
   return { prefix: parts.slice(0, i), rest: parts.slice(i + 1) };
 }
@@ -21,8 +21,8 @@ export function symlinkPage(absFile, backendPath, modulesPath) {
   const target = path.join(modulesPath, ...prefix, ...rest);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   if (!fs.existsSync(target)) fs.symlinkSync(absFile, target);
-  const folderRel = path.join(...prefix, ...rest.slice(0, -1)) || '';
-  return { folderRel: folderRel === '.' ? '' : folderRel, name: stripExt(rest[rest.length - 1]) };
+  const rel = path.join(...prefix, ...rest.slice(0, -1));
+  return { folderRel: rel === '.' ? '' : rel, name: stripExt(rest[rest.length - 1]) };
 }
 
 // id de módulo de un spec OpenAPI: backend/compra/docs/api/openapi.yaml → 'compra'.
@@ -30,21 +30,16 @@ export function apiId(specPath, backendPath) {
   return splitDocs(specPath, backendPath).prefix.join('/');
 }
 
-export function separatorOf(node) {
-  return node.icon ? `---[${node.icon}]${node.title}---` : `---${node.title}---`;
-}
-
 // ── Recolección previa para cálculo de anchos de columna ─────────────────────
 
-// Títulos de los nodos que aparecerán en la tabla de módulos (grupos y páginas raíz).
 export function collectModuleTitles(tree) {
   return tree.sections.flatMap(s => s.content.filter(n => n.type !== 'api').map(n => n.title));
 }
 
-// ids de todos los specs api únicos del árbol (para la tabla OpenAPI).
 export function collectApiIds(tree, backendPath) {
-  const ids = [];
+  const ids  = [];
   const seen = new Set();
+
   function walk(node) {
     if (node.type === 'api') {
       const id = apiId(node.spec, backendPath);
@@ -52,15 +47,32 @@ export function collectApiIds(tree, backendPath) {
     }
     if (Array.isArray(node.content)) node.content.forEach(walk);
   }
+
   tree.sections.forEach(s => s.content.forEach(walk));
   return ids;
 }
 
 // ── Layout del árbol de navegación ───────────────────────────────────────────
-// onModuleSync: callback({ title, id, fileCount, status }) llamado por grupo/página procesada.
-// apis: array mutado in-place con los specs api encontrados (se procesan en index.js).
 
 export function makeNavLayout({ backendPath, modulesPath, apis, onModuleSync }) {
+
+  // Deriva la carpeta padre de un archivo sin crear el symlink.
+  function folderRelOf(file) {
+    const { prefix, rest } = splitDocs(file, backendPath);
+    const rel = path.join(...prefix, ...rest.slice(0, -1));
+    return rel === '.' ? '' : rel;
+  }
+
+  // Crea symlink de `file` dentro de un directorio específico de modules/.
+  function symlinkToDir(file, dir) {
+    const { rest } = splitDocs(file, backendPath);
+    const filename = rest[rest.length - 1];
+    const target   = path.join(modulesPath, dir, filename);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    if (!fs.existsSync(target)) fs.symlinkSync(file, target);
+    return stripExt(filename);
+  }
+
   function registerApi(node) {
     const id = apiId(node.spec, backendPath);
     apis.push({ id, title: node.title, spec: node.spec, mode: node.mode, baseDir: `${id}/api`, content: node.content ?? null });
@@ -68,47 +80,37 @@ export function makeNavLayout({ backendPath, modulesPath, apis, onModuleSync }) 
   }
 
   function layoutGroup(group, forceDir = null) {
+    const { title, icon, content } = group;
     const pages = [];
     let groupDir = forceDir;
     let fileCount = 0;
 
     const setDir = dir => {
       if (groupDir === null) { groupDir = dir; return; }
-      if (dir !== groupDir) console.warn(`⚠ grupo "${group.title}": hijos en carpetas distintas (${groupDir} vs ${dir}). v1 soporta grupos co-localados; se usa ${groupDir}.`);
+      if (dir !== groupDir) console.warn(`⚠ grupo "${title}": hijos en carpetas distintas (${groupDir} vs ${dir}). Se usa ${groupDir}.`);
     };
 
-    for (const child of group.content) {
+    for (const child of content) {
       if (child.type === 'page') {
-        // Si forceDir está set (subgrupo), crear symlink dentro de esa carpeta
         if (forceDir) {
-          const { prefix, rest } = splitDocs(child.file, backendPath);
-          const target = path.join(modulesPath, forceDir, rest[rest.length - 1]);
-          fs.mkdirSync(path.dirname(target), { recursive: true });
-          if (!fs.existsSync(target)) fs.symlinkSync(child.file, target);
-          pages.push(stripExt(rest[rest.length - 1]));
-          fileCount++;
+          pages.push(symlinkToDir(child.file, forceDir));
         } else {
           const { folderRel, name } = symlinkPage(child.file, backendPath, modulesPath);
-          setDir(folderRel); pages.push(name); fileCount++;
+          setDir(folderRel);
+          pages.push(name);
         }
+        fileCount++;
       } else if (child.type === 'api') {
-        setDir(registerApi(child)); pages.push('api');
+        setDir(registerApi(child));
+        pages.push('api');
       } else if (child.type === 'group') {
-        // Subgrupo: crear su carpeta DENTRO de la carpeta actual (groupDir)
         const subGroupSlug = child.title.toLowerCase().replace(/\s+/g, '-');
-        // groupDir puede estar null si aún no hemos visto páginas; derivarlo del primer hijo del subgrupo
-        let parentForSub = groupDir;
-        if (parentForSub === null) {
-          // Derivar de la primera página del subgrupo
-          const firstPage = child.content.find(c => c.type === 'page');
-          if (firstPage) {
-            const { folderRel } = symlinkPage(firstPage.file, backendPath, modulesPath);
-            parentForSub = folderRel;
-          }
-        }
-        const subGroupDir = parentForSub ? `${parentForSub}/${subGroupSlug}` : subGroupSlug;
+        // groupDir puede ser null si el grupo aún no procesó ninguna página propia.
+        const firstPage = groupDir === null ? child.content.find(c => c.type === 'page') : null;
+        const parentDir = groupDir ?? (firstPage ? folderRelOf(firstPage.file) : null);
+        const subGroupDir = parentDir ? `${parentDir}/${subGroupSlug}` : subGroupSlug;
         layoutGroup(child, subGroupDir);
-        setDir(parentForSub || '');
+        setDir(parentDir ?? '');
         pages.push(subGroupSlug);
       }
     }
@@ -116,11 +118,10 @@ export function makeNavLayout({ backendPath, modulesPath, apis, onModuleSync }) 
     if (groupDir === null) groupDir = '';
     const metaDir = path.join(modulesPath, groupDir);
     fs.mkdirSync(metaDir, { recursive: true });
-    const meta = { title: group.title, pages };
-    if (group.icon) meta.icon = group.icon;
+    const meta = { title, pages, ...(icon ? { icon } : {}) };
     fs.writeFileSync(path.join(metaDir, 'meta.json'), JSON.stringify(meta, null, 2) + '\n');
 
-    onModuleSync({ title: group.title, id: groupDir || group.title, fileCount, status: 'synced' });
+    onModuleSync({ title, id: groupDir || title, fileCount, status: 'synced' });
     return groupDir;
   }
 

@@ -28,8 +28,7 @@ function processNode(node, baseDir, inApi, stack) {
     throw new Error(`Nodo de navegación inválido en ${baseDir}: ${JSON.stringify(node)}`);
   }
 
-  const out = { type: node.type, title: node.title };
-  if (node.icon) out.icon = node.icon;
+  const out = { type: node.type, title: node.title, ...(node.icon ? { icon: node.icon } : {}) };
 
   switch (node.type) {
     case 'page': {
@@ -124,12 +123,16 @@ export function resolveNav(backendPath) {
   }
 
   const baseDir = path.dirname(indexPath);
-  const sections = nav.sections.map(section => {
-    const out = { title: section.title };
-    if (section.icon) out.icon = section.icon;
-    out.content = processContent(section.content ?? [], baseDir, false, [indexPath]);
-    return out;
-  });
+  const sections = nav.sections.map(section => ({
+    title: section.title,
+    ...(section.icon ? { icon: section.icon } : {}),
+    content: processContent(section.content ?? [], baseDir, false, [indexPath]),
+  }));
 
   return { title: nav.title ?? 'Docs', sections };
+}
+
+// Formatea una sección del árbol de navegación como separador de Fumadocs.
+export function separatorOf(node) {
+  return node.icon ? `---[${node.icon}]${node.title}---` : `---${node.title}---`;
 }

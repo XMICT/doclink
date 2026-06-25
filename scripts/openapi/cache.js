@@ -5,7 +5,11 @@ import crypto from 'crypto';
 // ── Helpers internos ──────────────────────────────────────────────────────────
 
 const sha256 = str => crypto.createHash('sha256').update(str).digest('hex');
-const hashFileSafe = abs => { try { return sha256(fs.readFileSync(abs)); } catch { return 'missing'; } };
+
+function hashFileSafe(abs) {
+  try { return sha256(fs.readFileSync(abs)); }
+  catch { return 'missing'; }
+}
 
 // Se calcula una vez: cualquier marcador puede introspeccionar cualquier modelo,
 // y las asociaciones arrastran vecinos, así que se hashean todos.
