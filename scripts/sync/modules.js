@@ -93,8 +93,14 @@ export function makeNavLayout({ backendPath, modulesPath, apis, onModuleSync }) 
         }
         fileCount++;
       } else if (child.type === 'api') {
-        setDir(registerApi(child));
-        pages.push('api');
+        const id = registerApi(child);
+        if (forceDir) {
+          // ponytail: la API vive siempre en <módulo>/api; el meta.json del subgrupo la referencia con ../
+          pages.push(path.relative(forceDir, `${id}/api`));
+        } else {
+          setDir(id);
+          pages.push('api');
+        }
       } else if (child.type === 'group') {
         const subGroupSlug = child.title.toLowerCase().replace(/\s+/g, '-');
         // groupDir puede ser null si el grupo aún no procesó ninguna página propia.
