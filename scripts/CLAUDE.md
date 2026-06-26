@@ -70,9 +70,29 @@ backend/compra/docs/introduccion.mdx
 
 Devuelve `{ layoutNode }`. Llamar `layoutNode(node)` por cada nodo del árbol:
 
-- `page` → crea symlink, devuelve path relativo para `meta.json`
-- `group` → crea `meta.json` con `{ title, pages: [...] }` en su carpeta; gestiona subgrupos recursivamente creando subcarpetas
+- `page` → crea symlink en su ubicación natural (`modules/<módulo>/<nombre>.mdx`), devuelve path relativo para `meta.json`
+- `group` → crea `meta.json` en su carpeta; gestiona subgrupos recursivamente
 - `api` → registra el spec en el array `apis[]` (se procesa en fase 3), devuelve `'<id>/api'`
+
+#### Subgrupos (`forceDir`)
+
+Cuando un nodo `group` anidado se procesa, se activa `forceDir = '<módulo>/<slug-subgrupo>'`. En este contexto las páginas **no se mueven**: siguen en su ubicación natural. El `meta.json` del subgrupo las referencia con `../`:
+
+```
+backend/cxp/docs/listar.mdx  →  modules/cxp/listar.mdx  (symlink, no se mueve)
+
+modules/cxp/consultas/meta.json:
+  { "title": "Consultas", "pages": ["../listar", "../obtener"] }
+```
+
+Fumadocs asigna las páginas al nodo "Consultas" en el sidebar sin alterar su URL (`/docs/cxp/listar`).
+
+Si el subgrupo contiene un nodo `api`, se calcula la ruta relativa desde `forceDir` hacia el `baseDir` de la API:
+
+```js
+pages.push(path.relative(forceDir, `${id}/api`));
+// forceDir='cxp/sub', id='cxp'  →  '../api'
+```
 
 ### `meta.json` raíz
 
