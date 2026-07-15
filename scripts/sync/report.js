@@ -22,7 +22,8 @@ export function createReporter(moduleTitles, apiIds) {
   const modResults = [];
   const apiResults = [];
 
-  let handleDone = result => { apiResults.push(result); };
+  let handleDone  = result => { apiResults.push(result); };
+  let handleStart = () => {};
 
   // ── Helpers de render ─────────────────────────────────────────────────────
 
@@ -47,8 +48,12 @@ export function createReporter(moduleTitles, apiIds) {
     return `  ${color}${icon}${c.reset}  ${c.bold}${r.id.padEnd(apiW)}${c.reset}  ${color}${label.padEnd(15)}${c.reset}${c.dim}${tail}${c.reset}`;
   }
 
-  function pendingLineContent(id, frame) {
-    return `  ${c.dim}${SPINNER[frame]}${c.reset}  ${c.bold}${id.padEnd(apiW)}${c.reset}  ${c.dim}procesando...${c.reset}`;
+  function queueLineContent(id) {
+    return `  ${c.dim}·${c.reset}  ${c.bold}${id.padEnd(apiW)}${c.reset}  ${c.dim}${'en cola'.padEnd(15)}${c.reset}`;
+  }
+
+  function processingLineContent(id, frame) {
+    return `  ${c.dim}${SPINNER[frame]}${c.reset}  ${c.bold}${id.padEnd(apiW)}${c.reset}  ${c.yellow}${'procesando'.padEnd(15)}${c.reset}`;
   }
 
   // ── Tabla de módulos sincronizados ────────────────────────────────────────
@@ -82,25 +87,37 @@ export function createReporter(moduleTitles, apiIds) {
       const N = apiIds.length;
       if (!N) return;
 
-      const pending   = new Set(apiIds);
-      const indexMap  = Object.fromEntries(apiIds.map((id, i) => [id, i]));
+      const pending     = new Set(apiIds);
+      const indexMap    = Object.fromEntries(apiIds.map((id, i) => [id, i]));
+      let activeId     = null;
       let spinnerFrame = 0;
+      let interval     = null;
 
       if (isTTY) {
-        for (const id of apiIds) console.log(pendingLineContent(id, spinnerFrame));
+        for (const id of apiIds) console.log(queueLineContent(id));
 
-        const interval = setInterval(() => {
+        interval = setInterval(() => {
+          if (!activeId || !pending.has(activeId)) return;
           spinnerFrame = (spinnerFrame + 1) % SPINNER.length;
-          for (const id of pending) updateLine(indexMap[id], N, pendingLineContent(id, spinnerFrame));
+          updateLine(indexMap[activeId], N, processingLineContent(activeId, spinnerFrame));
         }, 80);
+
+        handleStart = id => {
+          if (!pending.has(id)) return;
+          activeId = id;
+          spinnerFrame = 0;
+          updateLine(indexMap[id], N, processingLineContent(id, spinnerFrame));
+        };
 
         handleDone = result => {
           apiResults.push(result);
           pending.delete(result.id);
+          if (activeId === result.id) activeId = null;
           updateLine(indexMap[result.id], N, apiLineContent(result));
           if (pending.size === 0) clearInterval(interval);
         };
       } else {
+        handleStart = () => {};
         handleDone = result => {
           apiResults.push(result);
           console.log(apiLineContent(result));
@@ -108,6 +125,7 @@ export function createReporter(moduleTitles, apiIds) {
       }
     },
 
+    start(id) { handleStart(id); },
     done(result) { handleDone(result); },
 
     endOpenApiTable(pruned) {

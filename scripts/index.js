@@ -80,15 +80,17 @@ fs.writeFileSync(path.join(cacheDir, 'nav.json'), JSON.stringify({ apis }, null,
 
 reporter.endModulesTable();
 
-// ── Fase 2: expansión OpenAPI con caché incremental (paralela) ───────────────
-// Todos los specs se procesan concurrentemente; reporter.done() refleja cada
-// resultado en tiempo real conforme terminan.
+// ── Fase 2: expansión OpenAPI con caché incremental (secuencial) ─────────────
+// Uno a uno para no saturar RAM: cada expandSpec puede lanzar subprocess de
+// introspección Sequelize. Con Promise.all paralelizados, laptops de 16 GB
+// se quedan sin memoria.
 
 async function processOpenApi(specPath) {
   if (processedSpecs.has(specPath)) return;
   processedSpecs.add(specPath);
 
   const id         = apiId(specPath, backendPath);
+  reporter.start(id);
   const openapiDir = path.dirname(specPath);
   const specRaw    = fs.readFileSync(specPath, 'utf-8');
   const spec       = yaml.load(specRaw);
@@ -120,7 +122,9 @@ async function processOpenApi(specPath) {
 }
 
 reporter.startOpenApiTable();
-await Promise.all([...new Set(apis.map(a => a.spec))].map(processOpenApi));
+for (const specPath of new Set(apis.map(a => a.spec))) {
+  await processOpenApi(specPath);
+}
 
 const pruned = pruneCache(cacheDir, Object.keys(newManifest));
 saveManifest(manifestPath, newManifest);
