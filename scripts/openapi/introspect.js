@@ -131,7 +131,9 @@ export function loadPayloadSchema(payloadPath, backendPath) {
 
   const script = `
 const payload = require('${absPath}');
-const isJoi = !!(payload && payload.isJoi);
+// payload.isJoi ya no existe desde Joi 17+ (reemplazado por Joi.isSchema()); se detecta
+// por duck-typing para no depender de la versión de Joi instalada en cada backend.
+const isJoi = !!(payload && typeof payload.describe === 'function' && typeof payload.validate === 'function');
 const data = isJoi ? payload.describe() : payload;
 process.stdout.write('SYSTEM_PAYLOAD:' + JSON.stringify({ format: isJoi ? 'joi' : 'ajv', data }) + '\\n');
 `;
