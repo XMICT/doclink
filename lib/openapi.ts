@@ -34,7 +34,7 @@ export interface ApiNode {
 }
 
 const env = loadEnvLocal();
-const apiUrl = env.API_URL ?? process.env.API_URL;
+export const apiUrl = env.API_URL ?? process.env.API_URL;
 const cacheDir = path.join(process.cwd(), '.openapi-cache');
 
 // Lista de nodos api resuelta por scripts/setup.js (corre antes de dev/build).
