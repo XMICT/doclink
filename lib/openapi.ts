@@ -17,12 +17,19 @@ function loadEnvLocal(): Record<string, string> {
   );
 }
 
-export interface ApiManualNode {
-  type: 'group' | 'page';
+export interface ApiManualGroupNode {
+  type: 'group';
   title: string;
-  op?: string;
-  content?: ApiManualNode[];
+  content: ApiManualNode[];
 }
+
+export interface ApiManualPageNode {
+  type: 'page';
+  title: string;
+  op: string;
+}
+
+export type ApiManualNode = ApiManualGroupNode | ApiManualPageNode;
 
 export interface ApiNode {
   id: string;
