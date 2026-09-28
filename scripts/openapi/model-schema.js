@@ -26,7 +26,7 @@ export function resolveFields(fields, ownProperties, excludeSet) {
 
 // Construye las propiedades de asociación a partir de un `include`.
 // Cada entrada es un alias (string) o `{ model: alias, fields: [...] }`.
-export async function buildAssocSchema(include, schemaData, backendPath) {
+export async function buildAssocSchema(include, schemaData, ctx) {
   const assocSchema = {};
   for (const raw of include) {
     const alias  = typeof raw === 'string' ? raw : raw.model;
@@ -38,7 +38,8 @@ export async function buildAssocSchema(include, schemaData, backendPath) {
     if (!targetModelName) continue;
 
     try {
-      const target  = await introspectSchema(targetModelName, backendPath);
+      const target  = await introspectSchema(targetModelName, ctx.backendPath);
+      if (target.warnings?.length) ctx.warnings.push(...target.warnings);
       const entries = fields
         ? fields.map(parseField)
         : Object.keys(target.ownProperties).map(f => ({ field: f, alias: f }));
@@ -57,6 +58,7 @@ export async function buildAssocSchema(include, schemaData, backendPath) {
 export async function expandModelSchema(node, ctx) {
   const { include = [], model, exclude, description, example } = node;
   const schemaData  = await introspectSchema(model, ctx.backendPath);
+  if (schemaData.warnings?.length) ctx.warnings.push(...schemaData.warnings);
   const excludeSet  = resolveExclude(exclude, schemaData.virtuals ?? []);
 
   const properties = Object.fromEntries(
@@ -64,7 +66,7 @@ export async function expandModelSchema(node, ctx) {
       .filter(([k]) => !excludeSet.has(k))
       .map(([k, v]) => [k, { ...v }])
   );
-  Object.assign(properties, await buildAssocSchema(include, schemaData, ctx.backendPath));
+  Object.assign(properties, await buildAssocSchema(include, schemaData, ctx));
 
   const required = (schemaData.required ?? []).filter(f => !excludeSet.has(f) && properties[f]);
   return {
@@ -80,6 +82,7 @@ export async function expandModelSchema(node, ctx) {
 export async function expandFieldSchema(node, ctx) {
   const { field } = parseField(node.fields[0]);
   const schemaData = await introspectSchema(node.model, ctx.backendPath);
+  if (schemaData.warnings?.length) ctx.warnings.push(...schemaData.warnings);
   const prop = schemaData.ownProperties[field];
   return prop ? { ...prop } : { type: 'string' };
 }
@@ -89,6 +92,7 @@ export async function expandFieldSchema(node, ctx) {
 // in:"query" (default) → query params + body_filtro.
 export async function buildModelParams(entry, ctx) {
   const schemaData = await introspectSchema(entry.model, ctx.backendPath);
+  if (schemaData.warnings?.length) ctx.warnings.push(...schemaData.warnings);
   const excludeSet = resolveExclude(entry.exclude, schemaData.virtuals ?? []);
   const fields     = resolveFields(entry.fields, schemaData.ownProperties ?? {}, excludeSet);
   const location   = entry.in ?? 'query';

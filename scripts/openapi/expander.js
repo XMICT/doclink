@@ -48,7 +48,11 @@ async function expandObject(node, ctx) {
   const entries = await Promise.all(
     Object.entries(node).map(async ([k, v]) => {
       if (k === 'parameters' && Array.isArray(v)) return [k, await expandParameters(v, ctx)];
-      if (k === 'schema'     && typeof v === 'string') return [k, await loadPayloadSchema(path.resolve(ctx.openapiDir, v), ctx.backendPath)];
+      if (k === 'schema'     && typeof v === 'string') {
+        const { schema, warnings } = await loadPayloadSchema(path.resolve(ctx.openapiDir, v), ctx.backendPath);
+        if (warnings?.length) ctx.warnings.push(...warnings);
+        return [k, schema];
+      }
       return [k, await expandNode(v, ctx)];
     })
   );
@@ -89,8 +93,8 @@ export function detectExtensions(spec) {
 export async function expandSpec(spec, backendPath, openapiDir) {
   const result = structuredClone(spec);
   delete result['x-enums'];
-  const ctx = { backendPath, openapiDir };
+  const ctx = { backendPath, openapiDir, warnings: [] };
   if (result.components?.schemas) result.components.schemas = await expandNode(result.components.schemas, ctx);
   if (result.paths)               result.paths               = await expandNode(result.paths, ctx);
-  return result;
+  return { spec: result, warnings: [...new Set(ctx.warnings)] };
 }

@@ -2,12 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Estilo de programación y commits
-
-**Antes de escribir o modificar cualquier código**, lee y aplica [`CODING_STYLE.md`](CODING_STYLE.md). Contiene los principios, convenciones de nomenclatura, patrones de arquitectura y reglas de estilo que definen cómo se programa en este proyecto. No son sugerencias — son reglas que se siguen al pie de la letra.
-
-**Antes de generar cualquier mensaje de commit**, usa el formato definido en [`COMMIT_STYLE.md`](COMMIT_STYLE.md). El formato varía según si el cambio tiene ticket (SS-, N-, T-, S-), rama técnica, o es un fix puntual sin ticket.
-
 ## Commands
 
 ```bash
@@ -26,10 +20,10 @@ No hay suite de tests en este repositorio.
 
 ### Flujo de arranque
 
-1. `scripts/index.js` resuelve el árbol de navegación desde `../[BACKEND_REPO]/docs/index.json`, crea symlinks en `modules/` y expande los specs OpenAPI. Ver [`scripts/CLAUDE.md`](scripts/CLAUDE.md) para la documentación completa del pipeline.
+1. `scripts/setup/index.js` resuelve el árbol de navegación desde `../[BACKEND_REPO]/docs/index.json`, crea symlinks en `modules/` y expande los specs OpenAPI. Ver [`scripts/CLAUDE.md`](scripts/CLAUDE.md) para la documentación completa del pipeline.
 2. `modules/` está en `.gitignore` y se regenera en cada `dev`/`build`.
 3. `source.config.ts` define la colección Fumadocs MDX apuntando a `modules/`.
-4. `lib/source.ts` es el hub central: inicializa el `loader` de Fumadocs combinando las páginas MDX con páginas virtuales OpenAPI. Para APIs manuales con grupos, `buildManualApiFiles` crea meta.json de subcarpeta con referencias `../operationId` (mismo mecanismo que los subgrupos de nav) — los grupos son colapsables en el sidebar pero las URLs permanecen planas. Exporta `getPageImage`, `getPageMarkdownUrl` y `getLLMText`.
+4. `lib/source.ts` es el hub central: inicializa el `loader` de Fumadocs combinando las páginas MDX con páginas virtuales OpenAPI, y exporta `getPageImage`, `getPageMarkdownUrl` y `getLLMText`.
 5. `lib/openapi.ts` lee `.openapi-cache/nav.json` (generado por el pipeline) y crea instancias OpenAPI por módulo usando `fumadocs-openapi`.
 
 ### Symlinks y webpack
