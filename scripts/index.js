@@ -5,7 +5,7 @@ import yaml from 'js-yaml';
 import { detectExtensions, expandSpec } from './openapi/expander.js';
 import { resolveNav, separatorOf } from './nav/resolve.js';
 import { specFingerprint, loadManifest, saveManifest, pruneCache } from './openapi/cache.js';
-import { apiId, collectModuleTitles, collectApiIds, makeNavLayout } from './sync/modules.js';
+import { apiId, collectModuleTitles, collectApiIds, collectPageTitles, makeNavLayout } from './sync/modules.js';
 import { createReporter } from './sync/report.js';
 
 // ── Configuración ─────────────────────────────────────────────────────────────
@@ -76,7 +76,10 @@ for (const section of tree.sections) {
 
 fs.writeFileSync(path.join(modulesPath, 'meta.json'), JSON.stringify({ pages: rootPages }, null, 2) + '\n');
 fs.mkdirSync(cacheDir, { recursive: true });
-fs.writeFileSync(path.join(cacheDir, 'nav.json'), JSON.stringify({ apis }, null, 2) + '\n');
+fs.writeFileSync(
+  path.join(cacheDir, 'nav.json'),
+  JSON.stringify({ apis, pageTitles: collectPageTitles(tree, backendPath) }, null, 2) + '\n',
+);
 
 reporter.endModulesTable();
 

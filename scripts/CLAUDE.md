@@ -86,6 +86,7 @@ modules/cxp/consultas/meta.json:
 ```
 
 Fumadocs asigna las páginas al nodo "Consultas" en el sidebar sin alterar su URL (`/docs/cxp/listar`).
+Las páginas directas de un grupo también pueden vivir en distintas carpetas; `meta.json` las referencia mediante rutas relativas desde la carpeta del grupo para mantener su ubicación natural.
 
 Si el subgrupo contiene un nodo `api`, se calcula la ruta relativa desde `forceDir` hacia el `baseDir` de la API:
 
