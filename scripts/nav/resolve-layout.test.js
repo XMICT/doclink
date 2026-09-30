@@ -4,9 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { resolveNav } from './resolve.js';
-import { makeNavLayout } from '../sync/modules.js';
+import { collectPageTitles, makeNavLayout } from '../sync/modules.js';
 
-test('resolves page paths from nav fragments and preserves directories in group metadata', t => {
+test('resolves nav page titles and paths and preserves directories in group metadata', t => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'doclink-nav-'));
   t.after(() => fs.rmSync(tempDir, { recursive: true, force: true }));
 
@@ -49,6 +49,11 @@ test('resolves page paths from nav fragments and preserves directories in group 
   const group = tree.sections[0].content[0];
   assert.equal(group.content[0].file, path.join(docsPath, 'recorrido', 'introduccion.md'));
   assert.equal(group.content[1].file, path.join(docsPath, 'procesos', 'flujo.md'));
+  assert.deepEqual(collectPageTitles(tree, backendPath), {
+    'evaluaciones/recorrido/introduccion': 'Cómo usar',
+    'evaluaciones/procesos/flujo': 'Flujo',
+    'evaluaciones/catalogo/areas': 'Áreas',
+  });
 
   const { layoutNode } = makeNavLayout({
     backendPath,

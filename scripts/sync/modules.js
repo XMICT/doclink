@@ -52,6 +52,22 @@ export function collectApiIds(tree, backendPath) {
   return ids;
 }
 
+export function collectPageTitles(tree, backendPath) {
+  const titles = {};
+
+  function walk(node) {
+    if (node.type === 'page' && node.file) {
+      const { prefix, rest } = splitDocs(node.file, backendPath);
+      const filePath = path.posix.join(...prefix, ...rest).replace(/\.mdx?$/, '');
+      titles[filePath] = node.title;
+    }
+    if (Array.isArray(node.content)) node.content.forEach(walk);
+  }
+
+  tree.sections.forEach(section => section.content.forEach(walk));
+  return titles;
+}
+
 // ── Layout del árbol de navegación ───────────────────────────────────────────
 
 export function makeNavLayout({ backendPath, modulesPath, apis, onModuleSync }) {
