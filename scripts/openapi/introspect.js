@@ -5,6 +5,21 @@ import { convertAjvSchema, convertJoiDescribe } from './converters.js';
 const schemaCache  = new Map();
 const payloadCache = new Map();
 
+// Sequelize emite advertencias no fatales (p.ej. "SQLite does not support 'TINYINT'
+// with UNSIGNED or ZEROFILL...") vía console.warn durante la definición de modelos.
+// Se separan del resto del stderr para no confundirlas con el error real cuando el
+// subproceso falla, y para poder mostrarlas como aviso en vez de como error.
+const SEQUELIZE_WARNING_RE = /\(sequelize\) Warning: [^\n]*(?:\n>> Check: [^\n]*)?\n?/g;
+
+function extractWarnings(stderr) {
+  const warnings = [];
+  const rest = stderr.replace(SEQUELIZE_WARNING_RE, match => {
+    warnings.push(match.trim());
+    return '';
+  });
+  return { warnings, rest: rest.trim() };
+}
+
 function runBackendScript(script, backendPath) {
   return new Promise((resolve, reject) => {
     const child = spawn('node', ['--input-type=commonjs'], {
@@ -15,7 +30,11 @@ function runBackendScript(script, backendPath) {
     let stderr = '';
     child.stdout.on('data', d => stdout += d);
     child.stderr.on('data', d => stderr += d);
-    child.on('close', code => code !== 0 ? reject(new Error(stderr || `exit ${code}`)) : resolve(stdout));
+    child.on('close', code => {
+      const { warnings, rest } = extractWarnings(stderr);
+      if (code !== 0) reject(Object.assign(new Error(rest || `exit ${code}`), { warnings }));
+      else resolve({ stdout, warnings });
+    });
     child.on('error', reject);
     child.stdin.write(script);
     child.stdin.end();
@@ -54,6 +73,16 @@ Object.values(db).forEach(m => m.associate && m.associate(db));
 
 const model = db['${modelName}'];
 if (!model) throw new Error('Model not found: ${modelName}');
+
+// Neutralizar el returnType de los campos VIRTUAL antes de generar: su schema real
+// se descarta más abajo de todos modos, y @alt3/sequelize-to-json-schemas truena con
+// VIRTUAL(STRING, [...]) — lee .options del wrapper VIRTUAL en vez de su returnType
+// (bug de esa versión de la librería en type-mapper.js).
+for (const attr of Object.values(model.rawAttributes)) {
+  if (attr.type.constructor.name === 'VIRTUAL') {
+    attr.type = new DataTypes.VIRTUAL();
+  }
+}
 
 const manager = new JsonSchemaManager({ baseUri: '' });
 const schema = manager.generate(model, new OpenApi3Strategy());
@@ -112,11 +141,11 @@ process.stdout.write('SYSTEM_SCHEMA:' + JSON.stringify({
 }) + '\\n');
 `;
 
-  const promise = runBackendScript(script, backendPath).then(raw => {
+  const promise = runBackendScript(script, backendPath).then(({ stdout, warnings }) => {
     const marker = 'SYSTEM_SCHEMA:';
-    const line = raw.split('\n').find(l => l.startsWith(marker));
+    const line = stdout.split('\n').find(l => l.startsWith(marker));
     if (!line) throw new Error(`No se pudo introspeccionar el modelo ${modelName}`);
-    return JSON.parse(line.slice(marker.length));
+    return { ...JSON.parse(line.slice(marker.length)), warnings };
   });
 
   schemaCache.set(cacheKey, promise);
@@ -138,12 +167,13 @@ const data = isJoi ? payload.describe() : payload;
 process.stdout.write('SYSTEM_PAYLOAD:' + JSON.stringify({ format: isJoi ? 'joi' : 'ajv', data }) + '\\n');
 `;
 
-  const promise = runBackendScript(script, backendPath).then(raw => {
+  const promise = runBackendScript(script, backendPath).then(({ stdout, warnings }) => {
     const marker = 'SYSTEM_PAYLOAD:';
-    const line = raw.split('\n').find(l => l.startsWith(marker));
+    const line = stdout.split('\n').find(l => l.startsWith(marker));
     if (!line) throw new Error(`No se pudo leer el payload: ${payloadPath}`);
     const { format, data } = JSON.parse(line.slice(marker.length));
-    return format === 'joi' ? convertJoiDescribe(data) : convertAjvSchema(data);
+    const schema = format === 'joi' ? convertJoiDescribe(data) : convertAjvSchema(data);
+    return { schema, warnings };
   });
 
   payloadCache.set(cacheKey, promise);

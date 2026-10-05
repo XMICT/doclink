@@ -52,6 +52,22 @@ export function collectApiIds(tree, backendPath) {
   return ids;
 }
 
+export function collectPageTitles(tree, backendPath) {
+  const titles = {};
+
+  function walk(node) {
+    if (node.type === 'page' && node.file) {
+      const { prefix, rest } = splitDocs(node.file, backendPath);
+      const filePath = path.posix.join(...prefix, ...rest).replace(/\.mdx?$/, '');
+      titles[filePath] = node.title;
+    }
+    if (Array.isArray(node.content)) node.content.forEach(walk);
+  }
+
+  tree.sections.forEach(section => section.content.forEach(walk));
+  return titles;
+}
+
 // ── Layout del árbol de navegación ───────────────────────────────────────────
 
 export function makeNavLayout({ backendPath, modulesPath, apis, onModuleSync }) {
@@ -76,31 +92,20 @@ export function makeNavLayout({ backendPath, modulesPath, apis, onModuleSync }) 
     let fileCount = 0;
 
     const setDir = dir => {
-      if (groupDir === null) { groupDir = dir; return; }
-      if (dir !== groupDir) console.warn(`⚠ grupo "${title}": hijos en carpetas distintas (${groupDir} vs ${dir}). Se usa ${groupDir}.`);
+      if (groupDir === null) groupDir = dir;
     };
 
     for (const child of content) {
       if (child.type === 'page') {
         const { folderRel, name } = symlinkPage(child.file, backendPath, modulesPath);
-        if (forceDir) {
-          // ponytail: la página vive en su ubicación natural; el meta.json del subgrupo la referencia con ../
-          const logical = folderRel ? `${folderRel}/${name}` : name;
-          pages.push(path.relative(forceDir, logical));
-        } else {
-          setDir(folderRel);
-          pages.push(name);
-        }
+        setDir(folderRel);
+        const logical = folderRel ? `${folderRel}/${name}` : name;
+        pages.push(path.relative(groupDir, logical));
         fileCount++;
       } else if (child.type === 'api') {
         const id = registerApi(child);
-        if (forceDir) {
-          // ponytail: la API vive siempre en <módulo>/api; el meta.json del subgrupo la referencia con ../
-          pages.push(path.relative(forceDir, `${id}/api`));
-        } else {
-          setDir(id);
-          pages.push('api');
-        }
+        setDir(id);
+        pages.push(path.relative(groupDir, `${id}/api`));
       } else if (child.type === 'group') {
         const subGroupSlug = child.title.toLowerCase().replace(/\s+/g, '-');
         // groupDir puede ser null si el grupo aún no procesó ninguna página propia.
