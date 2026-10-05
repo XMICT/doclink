@@ -1,11 +1,18 @@
 'use client';
 import { createOpenAPIPage } from 'fumadocs-openapi/ui';
 import type { OpenAPIPageProps } from 'fumadocs-openapi/ui';
+import type { CreateOpenAPIPageOptions } from 'fumadocs-openapi/ui';
 import type { ResultDisplayProps } from 'fumadocs-openapi/playground/client';
 import { DefaultResultDisplay } from 'fumadocs-openapi/playground/client';
 import { useMemo } from 'react';
 
 const MAX_LINES = 200;
+type MediaAdapter = NonNullable<CreateOpenAPIPageOptions['mediaAdapters']>[string];
+
+const binaryMediaAdapter: MediaAdapter = {
+  encode: ({ body }) => body as BodyInit,
+  generateExample: () => undefined,
+};
 
 function processBody(body: ArrayBuffer, contentType: string): ArrayBuffer {
   if (body.byteLength === 0) return body;
@@ -42,6 +49,11 @@ function TruncatedResultDisplay({ data, reset, ...rest }: ResultDisplayProps) {
 }
 
 const OpenAPIPage = createOpenAPIPage({
+  mediaAdapters: {
+    'image/jpeg': binaryMediaAdapter,
+    'image/png': binaryMediaAdapter,
+    'application/pdf': binaryMediaAdapter,
+  },
   playground: {
     components: {
       ResultDisplay: TruncatedResultDisplay,
