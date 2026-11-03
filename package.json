@@ -9,6 +9,7 @@
     "dev": "npm run setup && next dev",
     "start": "PORT=4000 next start",
     "types:check": "fumadocs-mdx && next typegen && tsc --noEmit",
+    "actividades": "node scripts/actividades/index.js",
     "postinstall": "fumadocs-mdx"
   },
   "dependencies": {
