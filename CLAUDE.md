@@ -63,6 +63,10 @@ Ver [`scripts/CLAUDE.md`](scripts/CLAUDE.md) para la documentación completa: á
 
 `proxy.ts` exporta una función (no un `middleware.ts` estándar) que se usa como middleware de Next.js. Redirige rutas con sufijo `.md` al endpoint `/llms.mdx/docs/...` y, si el cliente prefiere Markdown (`Accept: text/markdown`), reescribe la ruta a su equivalente MDX.
 
+### Validación de enlaces (`lib/remark-validate-links.ts`)
+
+Plugin remark que valida los enlaces markdown a `.md`/`.mdx` en cada build. Modo **híbrido** mientras los repos hermanos migran: acepta la ruta **física** (relativa al archivo, con `docs/`, p.ej. `../../compra/docs/flujo.mdx`) y la reescribe a su ubicación en `modules/`, y sigue aceptando la ruta **lógica** heredada (sin `docs/`). Los enlaces que no se pueden resolver (destino inexistente o fuera del nav) **no rompen el build**: se dejan como están y emiten un aviso `⚠ [enlaces]` con archivo, línea y la corrección sugerida cuando se puede. Pruebas: `node --test lib/remark-validate-links.test.mjs`.
+
 ### Chat con IA (`app/api/chat/route.ts` + `components/ai/search.tsx`)
 
 El endpoint POST `/api/chat` busca páginas relevantes usando `getLLMText` de `lib/source.ts` y hace streaming de la respuesta via `@llmgateway/ai-sdk-provider`. Requiere `LLM_GATEWAY_API_KEY` en `.env.local`.

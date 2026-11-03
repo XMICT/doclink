@@ -403,6 +403,23 @@
       "docs": [
         "README.md"
       ]
+    },
+    {
+      "id": "DL-025",
+      "tipo": "fix",
+      "titulo": "Los autores del backend enlazan páginas con la ruta real del archivo",
+      "descripcion": "Los enlaces entre páginas se escriben con la ruta física relativa (incluyendo docs/) y doclink los traduce a la ubicación lógica de modules/; los enlaces que no se pueden resolver avisan en lugar de romper el build.",
+      "estado": "en-curso",
+      "rama": "DL-025",
+      "pr": null,
+      "commits": [],
+      "version": null,
+      "inicio": "2026-11-03",
+      "cierre": null,
+      "docs": [
+        "docs/enlaces-fisicos-evaluacion.md"
+      ],
+      "nota": "Modo híbrido implementado en lib/remark-validate-links.ts; los enlaces no resolubles son avisos, no errores. Pendiente: 6 enlaces a documentation/*.md fuera del nav, 2 enlaces híbridos, migrar 210 enlaces lógicos del repo hermano y decidir si se pasa a estricto."
     }
   ],
   "aristas": [
@@ -573,6 +590,22 @@
     {
       "de": "DL-022",
       "a": "DL-017",
+      "tipo": "relacionada"
+    },
+    {
+      "de": "DL-025",
+      "a": "EP-01",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-025",
+      "a": "DL-012",
+      "tipo": "relacionada",
+      "nota": "DL-012 y DL-013 corrigieron la resolución de enlaces contra modules/; esta actividad cambia la convención de ruta que escribe el autor."
+    },
+    {
+      "de": "DL-025",
+      "a": "DL-013",
       "tipo": "relacionada"
     }
   ]
