@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "doclink/.actividades/schema.json",
+  "title": "Grafo de actividades de doclink",
+  "type": "object",
+  "required": ["proyecto", "actualizado", "nodos", "aristas"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "proyecto": { "type": "string" },
+    "actualizado": { "$ref": "#/$defs/fecha" },
+    "nodos": {
+      "type": "array",
+      "description": "Cada actividad o épica del proyecto.",
+      "items": { "$ref": "#/$defs/nodo" }
+    },
+    "aristas": {
+      "type": "array",
+      "description": "Relaciones dirigidas entre nodos: «de» → «a».",
+      "items": { "$ref": "#/$defs/arista" }
+    }
+  },
+  "$defs": {
+    "fecha": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "nodo": {
+      "type": "object",
+      "required": ["id", "tipo", "titulo", "descripcion", "estado"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^(DL-\\d{3}|EP-\\d{2})$",
+          "description": "DL-xxx para actividades, EP-xx para épicas. Nunca se reutiliza."
+        },
+        "tipo": {
+          "enum": ["epica", "feat", "fix", "refact", "hotfix", "chore", "recovery"],
+          "description": "Mismos tipos que COMMIT_STYLE.md, más «epica» para agrupar."
+        },
+        "titulo": {
+          "type": "string",
+          "description": "Escenario desde la perspectiva del usuario, como el título de un commit."
+        },
+        "descripcion": {
+          "type": "string",
+          "description": "Una o dos oraciones: qué problema se resolvió o qué se agregó."
+        },
+        "estado": {
+          "enum": ["pendiente", "en-curso", "en-revision", "en-release", "liberada", "descartada"],
+          "description": "pendiente: aún no empieza · en-curso: hay trabajo local o rama activa · en-revision: PR abierto · en-release: integrada en release, falta main · liberada: en main · descartada: no se hará."
+        },
+        "rama": { "type": ["string", "null"] },
+        "pr": { "type": ["integer", "null"], "description": "PR propio en GitHub." },
+        "commits": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+          "description": "Commits tal como quedaron en dev (o en su rama si no llegaron a dev)."
+        },
+        "version": { "type": ["string", "null"], "pattern": "^v\\d+\\.\\d+\\.\\d+$" },
+        "inicio": { "anyOf": [{ "$ref": "#/$defs/fecha" }, { "type": "null" }] },
+        "cierre": { "anyOf": [{ "$ref": "#/$defs/fecha" }, { "type": "null" }] },
+        "docs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Rutas relativas a .actividades/ con análisis o notas de apoyo."
+        },
+        "nota": { "type": "string", "description": "Aclaraciones que no caben en la descripción." }
+      }
+    },
+    "arista": {
+      "type": "object",
+      "required": ["de", "a", "tipo"],
+      "additionalProperties": false,
+      "properties": {
+        "de": { "type": "string" },
+        "a": { "type": "string" },
+        "tipo": {
+          "enum": ["parte-de", "depende-de", "corrige", "reemplaza", "relacionada"],
+          "description": "parte-de: actividad → épica · depende-de: requiere que «a» exista · corrige: arregla un defecto introducido por «a» · reemplaza: deja obsoleto a «a» · relacionada: comparten contexto."
+        },
+        "nota": { "type": "string" }
+      }
+    }
+  }
+}

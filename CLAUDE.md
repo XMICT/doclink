@@ -10,9 +10,24 @@ npm run build        # Genera symlinks y construye para producción
 npm run start        # Inicia el servidor de producción en el puerto 4000
 npm run setup        # Solo regenera los symlinks y meta.json (sin servidor)
 npm run types:check  # Verifica tipos TypeScript (fumadocs-mdx + next typegen + tsc)
+npm run actividades  # Valida .actividades/grafo.json y muestra el resumen (--todas, --github)
 ```
 
 No hay suite de tests en este repositorio.
+
+## Registro de actividades (`.actividades/`)
+
+Todo trabajo en este repo (fix, feat, refact…) queda registrado como un nodo en `.actividades/grafo.json`. Convenciones completas en [`.actividades/README.md`](.actividades/README.md); el formato lo define `.actividades/schema.json`.
+
+**Al empezar una actividad:**
+1. Busca en `grafo.json` si ya existe un nodo para ese trabajo. Si no, crea uno con el siguiente `DL-xxx` libre (nunca reutilices un ID). Incluye `titulo` (escenario desde la perspectiva del usuario, como en `COMMIT_STYLE.md`), `descripcion` de una o dos oraciones, `tipo`, `estado: en-curso` e `inicio`.
+2. Agrega su arista `parte-de` hacia la épica que corresponda. Si ninguna encaja, propón una nueva `EP-xx` al usuario antes de crearla.
+3. Agrega las aristas `depende-de`, `corrige`, `reemplaza` o `relacionada` solo cuando la relación sea real y verificable. No inventes relaciones.
+4. La rama se llama solo con el folio (`DL-023`), sin prefijo de tipo ni slug, y parte de `origin/release`. El mismo ID va en el título del commit (`DL-023 Escenario…`).
+
+**Al avanzar:** mantén actualizados `rama`, `pr`, `commits` (hashes tal como quedan en `dev`), `estado`, `cierre`, `version` y `docs`. Los análisis largos van en `.actividades/docs/` y se enlazan desde `docs`; no se escriben dentro del JSON.
+
+**Siempre:** actualiza `actualizado` con la fecha del día y ejecuta `npm run actividades` después de editar el grafo. No des por terminada la edición mientras reporte errores. Al usuario menciónale los avisos; no los corrijas sin preguntar.
 
 ## Architecture
 
