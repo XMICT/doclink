@@ -18,7 +18,8 @@ scripts/index.js   ← npm run setup / dev / build lo llama directamente
 | `sync/report.js` | Output en tabla con spinner live (TTY) o streaming (CI) |
 | `openapi/expander.js` | Expande marcadores custom dentro de specs OpenAPI |
 | `openapi/model-schema.js` | Convierte definiciones de modelos Sequelize a schemas OpenAPI |
-| `openapi/introspect.js` | Lanza subprocesos al backend para introspeccionar modelos y payloads |
+| `openapi/introspect.js` | Cliente IPC del worker de introspección (modelos y payloads) |
+| `openapi/backend-worker.cjs` | Worker persistente que corre dentro del backend: carga los modelos una vez y responde peticiones |
 | `openapi/converters.js` | Convierte descriptores Joi y schemas AJV al formato OpenAPI |
 | `openapi/cache.js` | Fingerprinting e invalidación incremental del caché OpenAPI |
 
@@ -106,7 +107,7 @@ Al terminar, `index.js` escribe `modules/meta.json` con todas las secciones como
 
 ## Fase 3 — Expansión OpenAPI con caché incremental (`index.js` + `openapi/expander.js`)
 
-Todos los specs recolectados en `apis[]` se procesan **en paralelo** (`Promise.all`).
+Los specs recolectados en `apis[]` se procesan **uno a uno**; toda la introspección pasa por un único worker persistente, así que paralelizar no aporta. Al terminar, `index.js` llama `closeIntrospection()` para cerrar el worker (sin eso el proceso no sale).
 
 ### Caché (`openapi/cache.js`)
 
@@ -174,18 +175,24 @@ Carga el archivo del backend y lo convierte a OpenAPI. Soporta dos formatos:
 
 El walker también resuelve `$ref` a archivos externos (`./schemas/comun.yaml#/Pointer`): carga el YAML, navega el pointer JSON y expande el nodo destino.
 
-### Introspección de modelos (`openapi/introspect.js`)
+### Introspección de modelos y payloads (`openapi/introspect.js` + `openapi/backend-worker.cjs`)
 
-Cada vez que se necesita un modelo, `introspectSchema()` lanza un proceso Node hijo con `--input-type=commonjs` dentro del directorio del backend. El script hijo:
+La primera petición lanza con `fork()` un único worker (`backend-worker.cjs`) con `cwd` en el backend; las peticiones (`{ type: 'model', name }` o `{ type: 'payload', path }`) viajan por IPC. Antes se lanzaba un proceso Node por cada modelo y cada payload, y cada uno recargaba los ~336 modelos: una reconstrucción completa tardaba ~3 min; con el worker tarda ~5 s.
 
-1. Stubea los drivers de BD (sqlite3, pg, mysql2…) para no necesitar conexión real
-2. Carga todos los `models/*.js` y llama a `.associate()`
-3. Usa `@alt3/sequelize-to-json-schemas` con `OpenApi3Strategy`
+Al recibir el primer modelo, el worker:
+
+1. Stubea los drivers de BD (sqlite3, pg, mysql2…) **solo mientras carga los modelos**; después restaura `Module._load` para que los payloads carguen como siempre
+2. Carga todos los `models/*.js` (resueltos con `createRequire` desde el backend) y llama a `.associate()` una sola vez
+3. Por cada modelo pedido usa `@alt3/sequelize-to-json-schemas` con `OpenApi3Strategy`
 4. Resuelve `$ref` internos que genera la librería (UUID, DateTime, Date, Blob)
 5. Limpia defaults inválidos (objetos vacíos de `UUIDV4`)
 6. Separa `ownProperties` de `assocProperties`
 
-El resultado se cachea en memoria (Map) por `backendPath + modelName` para no relanzar el proceso si el mismo modelo se usa en múltiples specs.
+Los payloads se cargan con `require()` en el mismo worker; si son Joi se llama `.describe()`.
+
+El stdout del worker se descarta (algunos modelos imprimen al cargarse). El stderr de cada operación se captura y se devuelve con la respuesta para extraer los warnings de Sequelize; los de la carga de modelos se adjuntan a cada modelo, igual que cuando cada introspección cargaba todo en su propio proceso.
+
+Los resultados se cachean en memoria (Map de Promises) en ambos lados: en `introspect.js` por `backendPath + modelName` / ruta del payload, y en el worker por nombre de modelo.
 
 ---
 
