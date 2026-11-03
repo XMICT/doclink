@@ -5,6 +5,7 @@ import crypto from 'crypto';
 // ── Helpers internos ──────────────────────────────────────────────────────────
 
 const sha256 = str => crypto.createHash('sha256').update(str).digest('hex');
+const OPENAPI_CACHE_VERSION = '2';
 
 function hashFileSafe(abs) {
   try { return sha256(fs.readFileSync(abs)); }
@@ -42,7 +43,7 @@ function collectSpecDeps(node, openapiDir, acc = new Set()) {
 export function specFingerprint(specRaw, openapiDir, spec, backendPath) {
   const deps = [...collectSpecDeps(spec, openapiDir)].sort();
   const depHash = deps.map(d => `${path.basename(d)}:${hashFileSafe(d)}`).join('|');
-  return sha256(`${specRaw}::${modelsFingerprint(backendPath)}::${depHash}`);
+  return sha256(`${OPENAPI_CACHE_VERSION}::${specRaw}::${modelsFingerprint(backendPath)}::${depHash}`);
 }
 
 export function loadManifest(manifestPath) {

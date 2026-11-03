@@ -115,6 +115,7 @@ Antes de expandir, se calcula un fingerprint SHA-256 que incluye:
 1. El contenido raw del YAML del spec
 2. Hash de todos los modelos Sequelize del backend (`models/*.js`)
 3. Hash de las dependencias externas (`$ref` a archivos y `schema: "<ruta>"`)
+4. `OPENAPI_CACHE_VERSION` (en `cache.js`): se incrementa cuando cambia la lógica de expansión, para que las expansiones cacheadas con la lógica anterior se regeneren aunque los specs no hayan cambiado
 
 Si el fingerprint coincide con `.openapi-cache/.manifest.json` y el `.yaml` expandido existe → se salta. Esto hace que `npm run setup` sea casi instantáneo en runs sin cambios.
 
@@ -173,6 +174,8 @@ Carga el archivo del backend y lo convierte a OpenAPI. Soporta dos formatos:
 #### `$ref` externos
 
 El walker también resuelve `$ref` a archivos externos (`./schemas/comun.yaml#/Pointer`): carga el YAML, navega el pointer JSON y expande el nodo destino.
+
+El walker recorre **todo** `components` (`schemas`, `responses`, `parameters`, `requestBodies`…) y `paths`. Un `$ref` externo que se deje sin expandir hace que `fumadocs-openapi` lo busque relativo a la raíz de doclink y el build falle con `ENOENT` (`Failed to resolve input`).
 
 ### Introspección de modelos (`openapi/introspect.js`)
 
