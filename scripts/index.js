@@ -7,6 +7,7 @@ import { resolveNav, separatorOf } from './nav/resolve.js';
 import { specFingerprint, loadManifest, saveManifest, pruneCache } from './openapi/cache.js';
 import { apiId, collectModuleTitles, collectApiIds, makeNavLayout } from './sync/modules.js';
 import { createReporter } from './sync/report.js';
+import { closeIntrospection } from './openapi/introspect.js';
 
 // ── Configuración ─────────────────────────────────────────────────────────────
 
@@ -81,9 +82,8 @@ fs.writeFileSync(path.join(cacheDir, 'nav.json'), JSON.stringify({ apis }, null,
 reporter.endModulesTable();
 
 // ── Fase 2: expansión OpenAPI con caché incremental (secuencial) ─────────────
-// Uno a uno para no saturar RAM: cada expandSpec puede lanzar subprocess de
-// introspección Sequelize. Con Promise.all paralelizados, laptops de 16 GB
-// se quedan sin memoria.
+// Uno a uno: toda la introspección Sequelize/Joi pasa por un único worker
+// persistente (openapi/backend-worker.cjs), así que paralelizar no aporta.
 
 async function processOpenApi(specPath) {
   if (processedSpecs.has(specPath)) return;
@@ -125,6 +125,7 @@ reporter.startOpenApiTable();
 for (const specPath of new Set(apis.map(a => a.spec))) {
   await processOpenApi(specPath);
 }
+closeIntrospection();
 
 const pruned = pruneCache(cacheDir, Object.keys(newManifest));
 saveManifest(manifestPath, newManifest);
