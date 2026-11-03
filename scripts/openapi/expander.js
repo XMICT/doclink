@@ -94,7 +94,7 @@ export async function expandSpec(spec, backendPath, openapiDir) {
   const result = structuredClone(spec);
   delete result['x-enums'];
   const ctx = { backendPath, openapiDir, warnings: [] };
-  if (result.components?.schemas) result.components.schemas = await expandNode(result.components.schemas, ctx);
-  if (result.paths)               result.paths               = await expandNode(result.paths, ctx);
+  if (result.components) result.components = await expandNode(result.components, ctx);
+  if (result.paths)      result.paths      = await expandNode(result.paths, ctx);
   return { spec: result, warnings: [...new Set(ctx.warnings)] };
 }
