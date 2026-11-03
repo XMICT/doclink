@@ -55,6 +55,16 @@ Object.values(db).forEach(m => m.associate && m.associate(db));
 const model = db['${modelName}'];
 if (!model) throw new Error('Model not found: ${modelName}');
 
+// Neutralizar el returnType de los campos VIRTUAL antes de generar: su schema real
+// se descarta más abajo de todos modos, y @alt3/sequelize-to-json-schemas truena con
+// VIRTUAL(STRING, [...]) — lee .options del wrapper VIRTUAL en vez de su returnType
+// (bug de esa versión de la librería en type-mapper.js).
+for (const attr of Object.values(model.rawAttributes)) {
+  if (attr.type.constructor.name === 'VIRTUAL') {
+    attr.type = new DataTypes.VIRTUAL();
+  }
+}
+
 const manager = new JsonSchemaManager({ baseUri: '' });
 const schema = manager.generate(model, new OpenApi3Strategy());
 

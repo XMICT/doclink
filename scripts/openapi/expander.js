@@ -15,12 +15,26 @@ const isModelParam  = p    => p && typeof p === 'object' && !!p.model && !p.name
 
 // ─── Walker recursivo ─────────────────────────────────────────────────────────
 
+// Dentro de un archivo externo (ej. schemas.yaml), los fragmentos suelen referenciarse
+// entre sí con un $ref local ("#/Fragmento"). Ese puntero es relativo AL ARCHIVO donde
+// vive, no al documento OpenAPI final — ahí no existe un nodo raíz "/Fragmento". Se
+// re-etiqueta con la misma ruta de archivo para que resuelva por el mismo camino que
+// cualquier $ref externo.
+function qualifyLocalRefs(node, filePart) {
+  if (Array.isArray(node)) return node.map(n => qualifyLocalRefs(n, filePart));
+  if (!node || typeof node !== 'object') return node;
+  if (typeof node['$ref'] === 'string' && node['$ref'].startsWith('#')) {
+    return { ...node, $ref: `${filePart}${node['$ref']}` };
+  }
+  return Object.fromEntries(Object.entries(node).map(([k, v]) => [k, qualifyLocalRefs(v, filePart)]));
+}
+
 async function resolveExternalRef(ref, ctx) {
   const [filePart, pointer = ''] = ref.split('#');
   const absFile    = path.resolve(ctx.openapiDir, filePart);
   const fileContent = yaml.load(fs.readFileSync(absFile, 'utf-8'));
   const target     = pointer.split('/').filter(Boolean).reduce((o, k) => o?.[k], fileContent);
-  return expandNode(target ?? {}, ctx);
+  return expandNode(qualifyLocalRefs(target ?? {}, filePart), ctx);
 }
 
 async function expandParameters(arr, ctx) {
