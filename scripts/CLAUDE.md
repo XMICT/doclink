@@ -177,6 +177,7 @@ Carga el archivo del backend y lo convierte a OpenAPI. Soporta dos formatos:
 El walker también resuelve `$ref` a archivos externos (`./schemas/comun.yaml#/Pointer`): carga el YAML, navega el pointer JSON y expande el nodo destino.
 
 ### Introspección de modelos y payloads (`openapi/introspect.js` + `openapi/backend-worker.cjs`)
+Un `$ref` externo cuenta como marcador en `detectExtensions()`: un spec que solo los usa también se expande. Si no, se cargaría el original y fumadocs-openapi (que recibe el spec ya parseado, sin ruta de archivo) buscaría `./schemas.yaml` en la raíz de doclink.
 
 La primera petición lanza con `fork()` un único worker (`backend-worker.cjs`) con `cwd` en el backend; las peticiones (`{ type: 'model', name }` o `{ type: 'payload', path }`) viajan por IPC. Antes se lanzaba un proceso Node por cada modelo y cada payload, y cada uno recargaba los ~336 modelos: una reconstrucción completa tardaba ~3 min; con el worker tarda ~5 s.
 

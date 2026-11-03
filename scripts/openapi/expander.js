@@ -76,7 +76,7 @@ export function detectExtensions(spec) {
   function hasMarkers(node) {
     if (Array.isArray(node)) return node.some(hasMarkers);
     if (!node || typeof node !== 'object') return false;
-    if (isModelSchema(node) || isFieldMarker(node)) return true;
+    if (isModelSchema(node) || isFieldMarker(node) || isExternalRef(node)) return true;
     for (const [k, v] of Object.entries(node)) {
       if (k === 'schema'     && typeof v === 'string') return true;
       if (k === 'parameters' && Array.isArray(v) && v.some(isModelParam)) return true;
