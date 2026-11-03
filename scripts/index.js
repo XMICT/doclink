@@ -111,13 +111,13 @@ async function processOpenApi(specPath) {
 
   const started = Date.now();
   try {
-    const expanded = await expandSpec(spec, backendPath, openapiDir);
+    const { spec: expanded, warnings } = await expandSpec(spec, backendPath, openapiDir);
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(outPath, yaml.dump(expanded, { noRefs: true }));
     newManifest[id] = fingerprint;
-    reporter.done({ id, status: 'built', ms: Date.now() - started });
+    reporter.done({ id, status: 'built', ms: Date.now() - started, warnings });
   } catch (err) {
-    reporter.done({ id, status: 'failed', error: err.message });
+    reporter.done({ id, status: 'failed', error: err.message, warnings: err.warnings });
   }
 }
 

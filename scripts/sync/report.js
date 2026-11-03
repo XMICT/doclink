@@ -45,7 +45,9 @@ export function createReporter(moduleTitles, apiIds) {
       r.status === 'built'  ? `${(r.ms / 1000).toFixed(1)}s` :
       r.status === 'cached' ? 'sin cambios' :
       r.status === 'failed' ? r.error : '';
-    return `  ${color}${icon}${c.reset}  ${c.bold}${r.id.padEnd(apiW)}${c.reset}  ${color}${label.padEnd(15)}${c.reset}${c.dim}${tail}${c.reset}`;
+    const n = r.warnings?.length ?? 0;
+    const warnTail = n ? ` ${c.yellow}⚠ ${n} aviso${n > 1 ? 's' : ''}${c.reset}` : '';
+    return `  ${color}${icon}${c.reset}  ${c.bold}${r.id.padEnd(apiW)}${c.reset}  ${color}${label.padEnd(15)}${c.reset}${c.dim}${tail}${c.reset}${warnTail}`;
   }
 
   function queueLineContent(id) {
@@ -133,15 +135,26 @@ export function createReporter(moduleTitles, apiIds) {
       printRule(apiW);
       const n = s => apiResults.filter(r => r.status === s).length;
       const totalMs = apiResults.reduce((a, r) => a + (r.ms ?? 0), 0);
+      const withWarnings = apiResults.filter(r => r.warnings?.length);
       const segs = [
         `${apiResults.length} módulos`,
         n('built')  && `${c.green}${n('built')} reconstruido${c.reset}`,
         n('cached') && `${c.cyan}${n('cached')} en caché${c.reset}`,
         n('plain')  && `${c.gray}${n('plain')} sin marcadores${c.reset}`,
         n('failed') && `${c.red}${n('failed')} con error${c.reset}`,
+        withWarnings.length && `${c.yellow}${withWarnings.length} con avisos${c.reset}`,
         pruned      && `${c.yellow}${pruned} podado${c.reset}`,
       ].filter(Boolean);
       console.log(`  ${c.dim}${segs.join(`${c.reset}${c.dim} · `)} · ${(totalMs / 1000).toFixed(1)}s${c.reset}`);
+
+      if (withWarnings.length) {
+        console.log('');
+        for (const r of withWarnings) {
+          for (const w of r.warnings) {
+            console.log(`  ${c.yellow}⚠${c.reset}  ${c.dim}${r.id}:${c.reset} ${w.split('\n')[0]}`);
+          }
+        }
+      }
       console.log('');
     },
   };
