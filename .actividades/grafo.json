@@ -403,6 +403,19 @@
       "docs": [
         "README.md"
       ]
+    },
+    {
+      "id": "DL-026",
+      "tipo": "fix",
+      "titulo": "El build ya no falla con specs OpenAPI que solo usan referencias a schemas.yaml",
+      "descripcion": "detectExtensions no contaba los $ref externos como marcadores, así que un spec que solo los usaba (af_categoria_config_contable) se cargaba sin expandir y fumadocs-openapi buscaba schemas.yaml en la raíz de doclink.",
+      "estado": "en-curso",
+      "rama": "DL-026",
+      "pr": null,
+      "commits": [],
+      "version": null,
+      "inicio": "2026-11-03",
+      "cierre": null
     }
   ],
   "aristas": [
@@ -574,6 +587,11 @@
       "de": "DL-022",
       "a": "DL-017",
       "tipo": "relacionada"
+    },
+    {
+      "de": "DL-026",
+      "a": "EP-02",
+      "tipo": "parte-de"
     }
   ]
 }

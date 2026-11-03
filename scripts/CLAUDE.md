@@ -174,6 +174,8 @@ Carga el archivo del backend y lo convierte a OpenAPI. Soporta dos formatos:
 
 El walker también resuelve `$ref` a archivos externos (`./schemas/comun.yaml#/Pointer`): carga el YAML, navega el pointer JSON y expande el nodo destino.
 
+Un `$ref` externo cuenta como marcador en `detectExtensions()`: un spec que solo los usa también se expande. Si no, se cargaría el original y fumadocs-openapi (que recibe el spec ya parseado, sin ruta de archivo) buscaría `./schemas.yaml` en la raíz de doclink.
+
 ### Introspección de modelos (`openapi/introspect.js`)
 
 Cada vez que se necesita un modelo, `introspectSchema()` lanza un proceso Node hijo con `--input-type=commonjs` dentro del directorio del backend. El script hijo:
