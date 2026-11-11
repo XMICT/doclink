@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "proyecto": "doclink",
-  "actualizado": "2026-11-03",
+  "actualizado": "2026-11-10",
   "nodos": [
     {
       "id": "EP-01",
@@ -382,7 +382,9 @@
       "estado": "en-curso",
       "rama": "DL-022",
       "pr": null,
-      "commits": [],
+      "commits": [
+        "1427614"
+      ],
       "version": null,
       "inicio": "2026-10-26",
       "cierre": null
@@ -415,7 +417,7 @@
       "version": null,
       "inicio": "2026-11-03",
       "cierre": null
-    }
+    },
     {
       "id": "DL-025",
       "tipo": "fix",
