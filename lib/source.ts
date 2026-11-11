@@ -1,4 +1,5 @@
 import { docs } from 'collections/server';
+import fs from 'fs';
 import path from 'path';
 import { loader } from 'fumadocs-core/source';
 import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
@@ -8,6 +9,11 @@ import { openapi, openapiByModule, apiNodes, type ApiNode } from './openapi';
 const docsSource = docs.toFumadocsSource();
 
 type SourceFile = (typeof docsSource.files)[number];
+
+const navCachePath = path.join(process.cwd(), '.openapi-cache', 'nav.json');
+const pageTitles: Record<string, string> = fs.existsSync(navCachePath)
+  ? (JSON.parse(fs.readFileSync(navCachePath, 'utf-8')).pageTitles ?? {})
+  : {};
 
 function slugify(s: string): string {
   return s.toLowerCase()
@@ -64,6 +70,16 @@ export const source = loader({
   baseUrl: docsRoute,
   source: { files: [...docsSource.files, ...apiFiles] },
   plugins: [lucideIconsPlugin(), openapi.loaderPlugin()],
+  pageTree: {
+    transformers: [{
+      file(node, filePath) {
+        if (!filePath) return node;
+        const key = path.posix.normalize(filePath.replace(/\\/g, '/')).replace(/\.(md|mdx)$/, '');
+        const title = pageTitles[key];
+        return title ? { ...node, name: title } : node;
+      },
+    }],
+  },
 });
 
 export function getPageImage(page: (typeof source)['$inferPage']) {

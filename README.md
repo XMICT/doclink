@@ -104,6 +104,10 @@ La navegación se define en `backend/docs/index.json` como un árbol recursivo. 
 
 Una entrada **string** en `content[]` es un fragmento: ruta a un `.json` que se inserta en su lugar. El fragmento puede ser un nodo único o un array de nodos.
 
+En un nodo `page`, `content` es la ruta al archivo `.md`/`.mdx`, relativa al `nav.json` donde se declara la página. Por ejemplo, `"content": "./recorrido/introduccion.md"` apunta a `docs/recorrido/introduccion.md` si el `nav.json` está en `docs/`. El prefijo `./` es opcional, pero hace explícita esta ubicación; no debe confundirse con un string directo de `content[]`, que representa un fragmento JSON. Si un grupo contiene páginas en distintas carpetas, el pipeline conserva esas rutas relativas en el sidebar.
+
+El `title` del nodo `page` en `nav.json` prevalece en el texto de la barra lateral. El título del frontmatter del archivo se conserva para el encabezado y los metadatos propios de la página.
+
 ### Agregar una página global
 
 1. Crea `backend/docs/mi-pagina.mdx`
