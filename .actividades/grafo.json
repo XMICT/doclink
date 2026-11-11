@@ -405,6 +405,19 @@
       ]
     },
     {
+      "id": "DL-024",
+      "tipo": "refact",
+      "titulo": "La documentación se construye en segundos aunque cambien los modelos del backend",
+      "descripcion": "La introspección de modelos Sequelize y payloads Joi/AJV pasa de un subproceso Node por modelo o payload (cada uno recargando los 336 modelos) a un único worker persistente que carga los modelos una sola vez.",
+      "estado": "en-curso",
+      "rama": "DL-024",
+      "pr": null,
+      "commits": [],
+      "version": null,
+      "inicio": "2026-11-03",
+      "cierre": null
+    }
+    {
       "id": "DL-025",
       "tipo": "fix",
       "titulo": "Los autores del backend enlazan páginas con la ruta real del archivo",
@@ -604,6 +617,17 @@
       "de": "DL-022",
       "a": "DL-017",
       "tipo": "relacionada"
+    },
+    {
+      "de": "DL-024",
+      "a": "EP-03",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-024",
+      "a": "DL-014",
+      "tipo": "relacionada",
+      "nota": "DL-014 serializó la expansión por el consumo de RAM de los subprocesos que este cambio elimina."
     },
     {
       "de": "DL-025",
