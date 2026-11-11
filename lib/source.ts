@@ -1,12 +1,19 @@
 import { docs } from 'collections/server';
+import fs from 'fs';
+import path from 'path';
 import { loader } from 'fumadocs-core/source';
 import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
 import { docsContentRoute, docsImageRoute, docsRoute } from './shared';
-import { openapi, openapiByModule, apiNodes, type ApiNode, type ApiManualNode } from './openapi';
+import { openapi, openapiByModule, apiNodes, type ApiNode } from './openapi';
 
 const docsSource = docs.toFumadocsSource();
 
 type SourceFile = (typeof docsSource.files)[number];
+
+const navCachePath = path.join(process.cwd(), '.openapi-cache', 'nav.json');
+const pageTitles: Record<string, string> = fs.existsSync(navCachePath)
+  ? (JSON.parse(fs.readFileSync(navCachePath, 'utf-8')).pageTitles ?? {})
+  : {};
 
 function slugify(s: string): string {
   return s.toLowerCase()
@@ -14,57 +21,33 @@ function slugify(s: string): string {
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
-// Construye los archivos virtuales para un api manual.
-// Si el contenido tiene grupos en el primer nivel, los convierte en subcarpetas
-// colapsables (cada grupo → meta.json propio + rutas remapeadas).
-// Si solo hay páginas sueltas, produce un meta.json plano.
+// Construye los archivos virtuales para un api manual. Las páginas permanecen
+// en rutas planas (base/op.mdx → URL plana) y cada grupo recibe su meta.json.
 function buildManualApiFiles(srcFiles: SourceFile[], node: ApiNode): SourceFile[] {
-  const content = node.content!;
   const base = node.baseDir;
+  const files: SourceFile[] = [...srcFiles]; // páginas no se remapean → URLs planas
 
-  const hasGroups = content.some(n => n.type === 'group');
+  function addMeta(title: string, content: NonNullable<ApiNode['content']>, dir: string) {
+    const pages: string[] = [];
 
-  if (!hasGroups) {
-    const pages = content.filter(n => n.type === 'page').map(n => (n as ApiManualNode).op!);
-    return [
-      ...srcFiles,
-      { type: 'meta', path: `${base}/meta.json`, data: { title: node.title, pages } } as unknown as SourceFile,
-    ];
-  }
-
-  const opToSlug = new Map<string, string>();
-  const groups: { slug: string; title: string; pages: string[] }[] = [];
-  const rootPages: string[] = [];
-
-  for (const item of content) {
-    if (item.type === 'group') {
-      const slug = slugify(item.title);
-      // pages en meta.json son slugs sin extensión
-      const pages = (item.content ?? []).filter(c => c.type === 'page').map(c => c.op!);
-      pages.forEach(op => opToSlug.set(op, slug));
-      groups.push({ slug, title: item.title, pages });
-    } else if (item.type === 'page') {
-      rootPages.push(item.op!);
+    for (const item of content) {
+      if (item.type === 'page') {
+        pages.push(path.posix.relative(dir, path.posix.join(base, item.op)));
+      } else {
+        const slug = slugify(item.title);
+        addMeta(item.title, item.content, path.posix.join(dir, slug));
+        pages.push(slug);
+      }
     }
+
+    files.push({
+      type: 'meta',
+      path: path.posix.join(dir, 'meta.json'),
+      data: { title, pages },
+    } as unknown as SourceFile);
   }
 
-  const files: SourceFile[] = srcFiles.map(f => {
-    const fileName = (f.path as string).split('/').pop()!;
-    const ext = fileName.endsWith('.mdx') ? '.mdx' : '';
-    const opId = ext ? fileName.slice(0, -ext.length) : fileName;
-    const slug = opToSlug.get(opId);
-    return slug ? { ...f, path: `${base}/${slug}/${fileName}` } : f;
-  });
-
-  for (const g of groups) {
-    files.push({ type: 'meta', path: `${base}/${g.slug}/meta.json`, data: { title: g.title, pages: g.pages } } as unknown as SourceFile);
-  }
-
-  files.push({
-    type: 'meta',
-    path: `${base}/meta.json`,
-    data: { title: node.title, pages: [...rootPages, ...groups.map(g => g.slug)] },
-  } as unknown as SourceFile);
+  addMeta(node.title, node.content!, base);
 
   return files;
 }
@@ -87,6 +70,16 @@ export const source = loader({
   baseUrl: docsRoute,
   source: { files: [...docsSource.files, ...apiFiles] },
   plugins: [lucideIconsPlugin(), openapi.loaderPlugin()],
+  pageTree: {
+    transformers: [{
+      file(node, filePath) {
+        if (!filePath) return node;
+        const key = path.posix.normalize(filePath.replace(/\\/g, '/')).replace(/\.(md|mdx)$/, '');
+        const title = pageTitles[key];
+        return title ? { ...node, name: title } : node;
+      },
+    }],
+  },
 });
 
 export function getPageImage(page: (typeof source)['$inferPage']) {

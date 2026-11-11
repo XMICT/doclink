@@ -10,9 +10,24 @@ npm run build        # Genera symlinks y construye para producción
 npm run start        # Inicia el servidor de producción en el puerto 4000
 npm run setup        # Solo regenera los symlinks y meta.json (sin servidor)
 npm run types:check  # Verifica tipos TypeScript (fumadocs-mdx + next typegen + tsc)
+npm run actividades  # Valida .actividades/grafo.json y muestra el resumen (--todas, --github)
 ```
 
 No hay suite de tests en este repositorio.
+
+## Registro de actividades (`.actividades/`)
+
+Todo trabajo en este repo (fix, feat, refact…) queda registrado como un nodo en `.actividades/grafo.json`. Convenciones completas en [`.actividades/README.md`](.actividades/README.md); el formato lo define `.actividades/schema.json`.
+
+**Al empezar una actividad:**
+1. Busca en `grafo.json` si ya existe un nodo para ese trabajo. Si no, crea uno con el siguiente `DL-xxx` libre (nunca reutilices un ID). Incluye `titulo` (escenario desde la perspectiva del usuario, como en `COMMIT_STYLE.md`), `descripcion` de una o dos oraciones, `tipo`, `estado: en-curso` e `inicio`.
+2. Agrega su arista `parte-de` hacia la épica que corresponda. Si ninguna encaja, propón una nueva `EP-xx` al usuario antes de crearla.
+3. Agrega las aristas `depende-de`, `corrige`, `reemplaza` o `relacionada` solo cuando la relación sea real y verificable. No inventes relaciones.
+4. La rama se llama solo con el folio (`DL-023`), sin prefijo de tipo ni slug, y parte de `origin/release`. El mismo ID va en el título del commit (`DL-023 Escenario…`).
+
+**Al avanzar:** mantén actualizados `rama`, `pr`, `commits` (hashes tal como quedan en `dev`), `estado`, `cierre`, `version` y `docs`. Los análisis largos van en `.actividades/docs/` y se enlazan desde `docs`; no se escriben dentro del JSON.
+
+**Siempre:** actualiza `actualizado` con la fecha del día y ejecuta `npm run actividades` después de editar el grafo. No des por terminada la edición mientras reporte errores. Al usuario menciónale los avisos; no los corrijas sin preguntar.
 
 ## Architecture
 
@@ -20,26 +35,19 @@ No hay suite de tests en este repositorio.
 
 ### Flujo de arranque
 
-1. `scripts/setup.js` lee `../[BACKEND_REPO]/docs.json` y crea symlinks en `modules/` apuntando a los directorios de docs del backend.
+1. `scripts/setup/index.js` resuelve el árbol de navegación desde `../[BACKEND_REPO]/docs/index.json`, crea symlinks en `modules/` y expande los specs OpenAPI. Ver [`scripts/CLAUDE.md`](scripts/CLAUDE.md) para la documentación completa del pipeline.
 2. `modules/` está en `.gitignore` y se regenera en cada `dev`/`build`.
 3. `source.config.ts` define la colección Fumadocs MDX apuntando a `modules/`.
 4. `lib/source.ts` es el hub central: inicializa el `loader` de Fumadocs combinando las páginas MDX con páginas virtuales OpenAPI, y exporta `getPageImage`, `getPageMarkdownUrl` y `getLLMText`.
-5. `lib/openapi.ts` lee los archivos `openapi.yaml` de cada módulo del backend usando `fumadocs-openapi`.
+5. `lib/openapi.ts` lee `.openapi-cache/nav.json` (generado por el pipeline) y crea instancias OpenAPI por módulo usando `fumadocs-openapi`.
 
 ### Symlinks y webpack
 
 `next.config.mjs` establece `config.resolve.symlinks = true` y `outputFileTracingRoot` al directorio padre del repo. Esto es imprescindible para que webpack resuelva los symlinks de `modules/` hacia el backend hermano.
 
-### Marcadores OpenAPI custom (`scripts/openapi-expander.js`)
+### Pipeline de build (`scripts/`)
 
-`setup.js` llama a `openapi-expander.js` para expandir los YAML de cada módulo. El expander resuelve tres marcadores que reutilizan los modelos Sequelize y payloads Joi/AJV del backend:
-
-- `parameters: [{ model, fields, exclude, in? }]` — inyecta parámetros query/path desde un modelo Sequelize.
-- `schema: { type: model, model, include, exclude }` — genera un schema inline introspectando el modelo.
-- `requestBody: { schema: "<ruta>" }` — carga y convierte un payload Joi o AJV del backend.
-- `type: catalog` — expande un campo enum declarado en `x-enums`.
-
-El expander ejecuta scripts Node directamente en el contexto del backend via `execSync`.
+Ver [`scripts/CLAUDE.md`](scripts/CLAUDE.md) para la documentación completa: árbol de navegación, creación de symlinks, expansión OpenAPI con caché incremental y marcadores custom (`type: model`, `parameters` con modelo Sequelize, `requestBody` con payload Joi/AJV, `type: catalog`).
 
 ### Capas arquitectónicas
 
@@ -55,6 +63,10 @@ El expander ejecuta scripts Node directamente en el contexto del backend via `ex
 
 `proxy.ts` exporta una función (no un `middleware.ts` estándar) que se usa como middleware de Next.js. Redirige rutas con sufijo `.md` al endpoint `/llms.mdx/docs/...` y, si el cliente prefiere Markdown (`Accept: text/markdown`), reescribe la ruta a su equivalente MDX.
 
+### Validación de enlaces (`lib/remark-validate-links.ts`)
+
+Plugin remark que valida los enlaces markdown a `.md`/`.mdx` en cada build. Modo **híbrido** mientras los repos hermanos migran: acepta la ruta **física** (relativa al archivo, con `docs/`, p.ej. `../../compra/docs/flujo.mdx`) y la reescribe a su ubicación en `modules/`, y sigue aceptando la ruta **lógica** heredada (sin `docs/`). Los enlaces que no se pueden resolver (destino inexistente o fuera del nav) **no rompen el build**: se dejan como están y emiten un aviso `⚠ [enlaces]` con archivo, línea y la corrección sugerida cuando se puede. Pruebas: `node --test lib/remark-validate-links.test.mjs`.
+
 ### Chat con IA (`app/api/chat/route.ts` + `components/ai/search.tsx`)
 
 El endpoint POST `/api/chat` busca páginas relevantes usando `getLLMText` de `lib/source.ts` y hace streaming de la respuesta via `@llmgateway/ai-sdk-provider`. Requiere `LLM_GATEWAY_API_KEY` en `.env.local`.
@@ -69,4 +81,4 @@ Copiar `.env.template` a `.env.local`:
 | `API_URL` | URL base para el playground OpenAPI interactivo |
 | `LLM_GATEWAY_API_KEY` | Clave para el gateway LLM del chat de IA |
 
-El backend debe existir en `../<BACKEND_REPO>/` con un `docs.json` en su raíz.
+El backend debe existir en `../<BACKEND_REPO>/` con un `docs/index.json` en su raíz (árbol de navegación) y fragmentos `[modulo]/docs/nav.json` por módulo.

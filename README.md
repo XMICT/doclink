@@ -104,6 +104,10 @@ La navegación se define en `backend/docs/index.json` como un árbol recursivo. 
 
 Una entrada **string** en `content[]` es un fragmento: ruta a un `.json` que se inserta en su lugar. El fragmento puede ser un nodo único o un array de nodos.
 
+En un nodo `page`, `content` es la ruta al archivo `.md`/`.mdx`, relativa al `nav.json` donde se declara la página. Por ejemplo, `"content": "./recorrido/introduccion.md"` apunta a `docs/recorrido/introduccion.md` si el `nav.json` está en `docs/`. El prefijo `./` es opcional, pero hace explícita esta ubicación; no debe confundirse con un string directo de `content[]`, que representa un fragmento JSON. Si un grupo contiene páginas en distintas carpetas, el pipeline conserva esas rutas relativas en el sidebar.
+
+El `title` del nodo `page` en `nav.json` prevalece en el texto de la barra lateral. El título del frontmatter del archivo se conserva para el encabezado y los metadatos propios de la página.
+
 ### Agregar una página global
 
 1. Crea `backend/docs/mi-pagina.mdx`
@@ -212,7 +216,7 @@ Los anchors se conservan: `[Estado](../compra/docs/estatus.mdx#concluida)`.
 ```
 
 ```jsonc
-// backend/cxp/docs/nav.json — api en modo manual: solo los endpoints listados
+// backend/cxp/docs/nav.json — api manual: endpoints en grupos anidables
 {
   "type": "group",
   "title": "Cuentas por Pagar",
@@ -228,8 +232,14 @@ Los anchors se conservan: `[Estado](../compra/docs/estatus.mdx#concluida)`.
           "type": "group",
           "title": "Consultas",
           "content": [
-            { "type": "page", "title": "Listar CxP",    "op": "listarCxP" },
-            { "type": "page", "title": "Obtener CxP",   "op": "getCxPById" }
+            {
+              "type": "group",
+              "title": "Documentos",
+              "content": [
+                { "type": "page", "title": "Listar CxP",  "content": "listarCxP" },
+                { "type": "page", "title": "Obtener CxP", "content": "getCxPById" }
+              ]
+            }
           ]
         }
       ]
@@ -241,6 +251,7 @@ Los anchors se conservan: `[Estado](../compra/docs/estatus.mdx#concluida)`.
 **Reglas:**
 - Toda ruta (`content`, `ref`, fragmento) es **relativa al `.json` que la contiene** — el fragmento es portátil
 - Una entrada string en `content[]` es siempre un fragmento `.json` (nodos son objetos)
+- En una `api` manual, los `group` pueden anidarse sin límite; las páginas usan `content` con su `operationId`
 - La URL de cada página se deriva de su ubicación en el backend, elidiendo el segmento `docs/`
   - `compra/docs/introduccion.mdx` → `/docs/compra/introduccion`
 - Los `group` solo etiquetan el sidebar; no añaden segmento de URL

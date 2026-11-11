@@ -28,3 +28,7 @@ yarn-error.log*
 .vercel
 next-env.d.ts
 package-lock.json
+
+# docker
+Dockerfile
+docker-compose.yml

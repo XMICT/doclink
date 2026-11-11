@@ -17,12 +17,19 @@ function loadEnvLocal(): Record<string, string> {
   );
 }
 
-export interface ApiManualNode {
-  type: 'group' | 'page';
+export interface ApiManualGroupNode {
+  type: 'group';
   title: string;
-  op?: string;
-  content?: ApiManualNode[];
+  content: ApiManualNode[];
 }
+
+export interface ApiManualPageNode {
+  type: 'page';
+  title: string;
+  op: string;
+}
+
+export type ApiManualNode = ApiManualGroupNode | ApiManualPageNode;
 
 export interface ApiNode {
   id: string;
@@ -34,7 +41,7 @@ export interface ApiNode {
 }
 
 const env = loadEnvLocal();
-const apiUrl = env.API_URL ?? process.env.API_URL;
+export const apiUrl = env.API_URL ?? process.env.API_URL;
 const cacheDir = path.join(process.cwd(), '.openapi-cache');
 
 // Lista de nodos api resuelta por scripts/setup.js (corre antes de dev/build).
