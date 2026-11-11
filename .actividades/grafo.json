@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "proyecto": "doclink",
-  "actualizado": "2026-11-03",
+  "actualizado": "2026-11-10",
   "nodos": [
     {
       "id": "EP-01",
@@ -380,13 +380,14 @@
       "titulo": "Los marcadores custom se expanden en todas las secciones de components",
       "descripcion": "expandSpec recorría solo components.schemas; ahora recorre todo components (parameters, requestBodies, responses…). Se versiona la huella de la caché para invalidar las expansiones anteriores.",
       "estado": "en-curso",
-      "rama": "dev",
+      "rama": "DL-022",
       "pr": null,
-      "commits": [],
+      "commits": [
+        "1427614"
+      ],
       "version": null,
       "inicio": "2026-10-26",
-      "cierre": null,
-      "nota": "Cambios sin commit en scripts/openapi/cache.js y scripts/openapi/expander.js."
+      "cierre": null
     },
     {
       "id": "DL-023",
@@ -416,7 +417,7 @@
       "version": null,
       "inicio": "2026-11-03",
       "cierre": null
-    }
+    },
     {
       "id": "DL-025",
       "tipo": "fix",
