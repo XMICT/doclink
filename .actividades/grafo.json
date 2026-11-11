@@ -185,7 +185,7 @@
       "tipo": "fix",
       "titulo": "Los enlaces de referencia apuntan a páginas existentes",
       "descripcion": "Se soluciona que algunos enlaces de referencia entre páginas no encontraran su destino.",
-      "estado": "liberada",
+      "estado": "descartada",
       "rama": "fix/nav-link-refs",
       "pr": 9,
       "commits": [
@@ -193,8 +193,8 @@
       ],
       "version": null,
       "inicio": "2026-06-24",
-      "cierre": "2026-06-24",
-      "nota": "GitHub marca el PR como integrado en main, pero d1717aa no aparece en main ni en dev. Verificar si el cambio se perdió o lo absorbió DL-011."
+      "cierre": "2026-06-25",
+      "nota": "El PR #9 se integró en main el 2026-06-24 (merge a8c897f, v0.2.4), pero el 2026-06-25 se hizo un force push que devolvió main a 22feb78 (v0.2.3) y dejó el cambio fuera. Su resolución de enlaces con path-map.json no sobrevivió en esa forma: DL-012, DL-013 y DL-025 resolvieron después el problema de otra manera. d1717aa solo existe en la rama fix/nav-link-refs."
     },
     {
       "id": "DL-011",
@@ -347,60 +347,60 @@
       "tipo": "fix",
       "titulo": "Los títulos de nav.json prevalecen en la barra lateral",
       "descripcion": "El sidebar usa el título definido en nav.json en lugar del título del archivo, y se conservan las rutas relativas de páginas en distintas carpetas (recorrido de evaluaciones).",
-      "estado": "en-revision",
+      "estado": "en-release",
       "rama": "fix/navbar-refs",
       "pr": 17,
       "commits": [
-        "a3abc1b",
-        "0314000"
+        "d70eada"
       ],
       "version": null,
       "inicio": "2026-09-30",
-      "cierre": null
+      "cierre": "2026-11-10"
     },
     {
       "id": "DL-021",
       "tipo": "feat",
       "titulo": "El playground de API acepta imágenes y PDF en el cuerpo de la petición",
       "descripcion": "Se registran media adapters binarios para image/jpeg, image/png y application/pdf en las páginas OpenAPI.",
-      "estado": "en-revision",
+      "estado": "en-release",
       "rama": "feat/images-support",
       "pr": 18,
       "commits": [
-        "191f7a5"
+        "fcf3d03"
       ],
       "version": null,
       "inicio": "2026-10-05",
-      "cierre": null,
-      "nota": "PR apilado: incluye los commits de DL-017 a DL-020."
+      "cierre": "2026-11-10"
     },
     {
       "id": "DL-022",
       "tipo": "fix",
       "titulo": "Los marcadores custom se expanden en todas las secciones de components",
       "descripcion": "expandSpec recorría solo components.schemas; ahora recorre todo components (parameters, requestBodies, responses…). Se versiona la huella de la caché para invalidar las expansiones anteriores.",
-      "estado": "en-curso",
+      "estado": "en-release",
       "rama": "DL-022",
-      "pr": null,
+      "pr": 24,
       "commits": [
-        "1427614"
+        "b079f75"
       ],
       "version": null,
       "inicio": "2026-10-26",
-      "cierre": null
+      "cierre": "2026-11-10"
     },
     {
       "id": "DL-023",
       "tipo": "feat",
       "titulo": "El equipo puede dar seguimiento al historial de actividades del proyecto",
       "descripcion": "Se crea .actividades/ con un grafo JSON de actividades y épicas reconstruido desde git y GitHub, su JSON Schema, y el comando npm run actividades que lo valida y resume.",
-      "estado": "en-curso",
+      "estado": "en-release",
       "rama": "DL-023",
-      "pr": null,
-      "commits": [],
+      "pr": 20,
+      "commits": [
+        "8e5a6d8"
+      ],
       "version": null,
       "inicio": "2026-11-02",
-      "cierre": null,
+      "cierre": "2026-11-03",
       "docs": [
         "README.md"
       ]
@@ -410,26 +410,30 @@
       "tipo": "refact",
       "titulo": "La documentación se construye en segundos aunque cambien los modelos del backend",
       "descripcion": "La introspección de modelos Sequelize y payloads Joi/AJV pasa de un subproceso Node por modelo o payload (cada uno recargando los 336 modelos) a un único worker persistente que carga los modelos una sola vez.",
-      "estado": "en-curso",
+      "estado": "en-release",
       "rama": "DL-024",
-      "pr": null,
-      "commits": [],
+      "pr": 21,
+      "commits": [
+        "1671c8c"
+      ],
       "version": null,
       "inicio": "2026-11-03",
-      "cierre": null
+      "cierre": "2026-11-10"
     },
     {
       "id": "DL-025",
       "tipo": "fix",
       "titulo": "Los autores del backend enlazan páginas con la ruta real del archivo",
       "descripcion": "Los enlaces entre páginas se escriben con la ruta física relativa (incluyendo docs/) y doclink los traduce a la ubicación lógica de modules/; los enlaces que no se pueden resolver avisan en lugar de romper el build.",
-      "estado": "en-curso",
+      "estado": "en-release",
       "rama": "DL-025",
-      "pr": null,
-      "commits": [],
+      "pr": 23,
+      "commits": [
+        "79ec597"
+      ],
       "version": null,
       "inicio": "2026-11-03",
-      "cierre": null,
+      "cierre": "2026-11-10",
       "docs": [
         "docs/enlaces-fisicos-evaluacion.md"
       ],
@@ -440,13 +444,15 @@
       "tipo": "fix",
       "titulo": "El build ya no falla con specs OpenAPI que solo usan referencias a schemas.yaml",
       "descripcion": "detectExtensions no contaba los $ref externos como marcadores, así que un spec que solo los usaba (af_categoria_config_contable) se cargaba sin expandir y fumadocs-openapi buscaba schemas.yaml en la raíz de doclink.",
-      "estado": "en-curso",
+      "estado": "en-release",
       "rama": "DL-026",
-      "pr": null,
-      "commits": [],
+      "pr": 22,
+      "commits": [
+        "ca40566"
+      ],
       "version": null,
       "inicio": "2026-11-03",
-      "cierre": null
+      "cierre": "2026-11-10"
     }
   ],
   "aristas": [
