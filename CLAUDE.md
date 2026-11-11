@@ -2,12 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Estilo de programación y commits
-
-**Antes de escribir o modificar cualquier código**, lee y aplica [`CODING_STYLE.md`](CODING_STYLE.md). Contiene los principios, convenciones de nomenclatura, patrones de arquitectura y reglas de estilo que definen cómo se programa en este proyecto. No son sugerencias — son reglas que se siguen al pie de la letra.
-
-**Antes de generar cualquier mensaje de commit**, usa el formato definido en [`COMMIT_STYLE.md`](COMMIT_STYLE.md). El formato varía según si el cambio tiene ticket (SS-, N-, T-, S-), rama técnica, o es un fix puntual sin ticket.
-
 ## Commands
 
 ```bash
@@ -16,9 +10,24 @@ npm run build        # Genera symlinks y construye para producción
 npm run start        # Inicia el servidor de producción en el puerto 4000
 npm run setup        # Solo regenera los symlinks y meta.json (sin servidor)
 npm run types:check  # Verifica tipos TypeScript (fumadocs-mdx + next typegen + tsc)
+npm run actividades  # Valida .actividades/grafo.json y muestra el resumen (--todas, --github)
 ```
 
 No hay suite de tests en este repositorio.
+
+## Registro de actividades (`.actividades/`)
+
+Todo trabajo en este repo (fix, feat, refact…) queda registrado como un nodo en `.actividades/grafo.json`. Convenciones completas en [`.actividades/README.md`](.actividades/README.md); el formato lo define `.actividades/schema.json`.
+
+**Al empezar una actividad:**
+1. Busca en `grafo.json` si ya existe un nodo para ese trabajo. Si no, crea uno con el siguiente `DL-xxx` libre (nunca reutilices un ID). Incluye `titulo` (escenario desde la perspectiva del usuario, como en `COMMIT_STYLE.md`), `descripcion` de una o dos oraciones, `tipo`, `estado: en-curso` e `inicio`.
+2. Agrega su arista `parte-de` hacia la épica que corresponda. Si ninguna encaja, propón una nueva `EP-xx` al usuario antes de crearla.
+3. Agrega las aristas `depende-de`, `corrige`, `reemplaza` o `relacionada` solo cuando la relación sea real y verificable. No inventes relaciones.
+4. La rama se llama solo con el folio (`DL-023`), sin prefijo de tipo ni slug, y parte de `origin/release`. El mismo ID va en el título del commit (`DL-023 Escenario…`).
+
+**Al avanzar:** mantén actualizados `rama`, `pr`, `commits` (hashes tal como quedan en `dev`), `estado`, `cierre`, `version` y `docs`. Los análisis largos van en `.actividades/docs/` y se enlazan desde `docs`; no se escriben dentro del JSON.
+
+**Siempre:** actualiza `actualizado` con la fecha del día y ejecuta `npm run actividades` después de editar el grafo. No des por terminada la edición mientras reporte errores. Al usuario menciónale los avisos; no los corrijas sin preguntar.
 
 ## Architecture
 
@@ -26,10 +35,10 @@ No hay suite de tests en este repositorio.
 
 ### Flujo de arranque
 
-1. `scripts/index.js` resuelve el árbol de navegación desde `../[BACKEND_REPO]/docs/index.json`, crea symlinks en `modules/` y expande los specs OpenAPI. Ver [`scripts/CLAUDE.md`](scripts/CLAUDE.md) para la documentación completa del pipeline.
+1. `scripts/setup/index.js` resuelve el árbol de navegación desde `../[BACKEND_REPO]/docs/index.json`, crea symlinks en `modules/` y expande los specs OpenAPI. Ver [`scripts/CLAUDE.md`](scripts/CLAUDE.md) para la documentación completa del pipeline.
 2. `modules/` está en `.gitignore` y se regenera en cada `dev`/`build`.
 3. `source.config.ts` define la colección Fumadocs MDX apuntando a `modules/`.
-4. `lib/source.ts` es el hub central: inicializa el `loader` de Fumadocs combinando las páginas MDX con páginas virtuales OpenAPI. Para APIs manuales con grupos, `buildManualApiFiles` crea meta.json de subcarpeta con referencias `../operationId` (mismo mecanismo que los subgrupos de nav) — los grupos son colapsables en el sidebar pero las URLs permanecen planas. Exporta `getPageImage`, `getPageMarkdownUrl` y `getLLMText`.
+4. `lib/source.ts` es el hub central: inicializa el `loader` de Fumadocs combinando las páginas MDX con páginas virtuales OpenAPI, y exporta `getPageImage`, `getPageMarkdownUrl` y `getLLMText`.
 5. `lib/openapi.ts` lee `.openapi-cache/nav.json` (generado por el pipeline) y crea instancias OpenAPI por módulo usando `fumadocs-openapi`.
 
 ### Symlinks y webpack

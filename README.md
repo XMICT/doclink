@@ -216,7 +216,7 @@ Los anchors se conservan: `[Estado](../compra/docs/estatus.mdx#concluida)`.
 ```
 
 ```jsonc
-// backend/cxp/docs/nav.json — api en modo manual: solo los endpoints listados
+// backend/cxp/docs/nav.json — api manual: endpoints en grupos anidables
 {
   "type": "group",
   "title": "Cuentas por Pagar",
@@ -232,8 +232,14 @@ Los anchors se conservan: `[Estado](../compra/docs/estatus.mdx#concluida)`.
           "type": "group",
           "title": "Consultas",
           "content": [
-            { "type": "page", "title": "Listar CxP",    "op": "listarCxP" },
-            { "type": "page", "title": "Obtener CxP",   "op": "getCxPById" }
+            {
+              "type": "group",
+              "title": "Documentos",
+              "content": [
+                { "type": "page", "title": "Listar CxP",  "content": "listarCxP" },
+                { "type": "page", "title": "Obtener CxP", "content": "getCxPById" }
+              ]
+            }
           ]
         }
       ]
@@ -245,6 +251,7 @@ Los anchors se conservan: `[Estado](../compra/docs/estatus.mdx#concluida)`.
 **Reglas:**
 - Toda ruta (`content`, `ref`, fragmento) es **relativa al `.json` que la contiene** — el fragmento es portátil
 - Una entrada string en `content[]` es siempre un fragmento `.json` (nodos son objetos)
+- En una `api` manual, los `group` pueden anidarse sin límite; las páginas usan `content` con su `operationId`
 - La URL de cada página se deriva de su ubicación en el backend, elidiendo el segmento `docs/`
   - `compra/docs/introduccion.mdx` → `/docs/compra/introduccion`
 - Los `group` solo etiquetan el sidebar; no añaden segmento de URL

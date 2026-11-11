@@ -1,0 +1,579 @@
+{
+  "$schema": "./schema.json",
+  "proyecto": "doclink",
+  "actualizado": "2026-11-03",
+  "nodos": [
+    {
+      "id": "EP-01",
+      "tipo": "epica",
+      "titulo": "Navegación declarativa",
+      "descripcion": "La navegación de la documentación se define en index.json del backend y en fragmentos nav.json por módulo: grupos, subgrupos, enlaces y títulos del sidebar.",
+      "estado": "en-curso",
+      "inicio": "2026-06-20",
+      "cierre": null
+    },
+    {
+      "id": "EP-02",
+      "tipo": "epica",
+      "titulo": "Expansión OpenAPI",
+      "descripcion": "Lectura de los specs OpenAPI de cada módulo y expansión de los marcadores custom (modelos Sequelize, payloads Joi/AJV, catálogos, $ref externos).",
+      "estado": "en-curso",
+      "inicio": "2026-06-18",
+      "cierre": null
+    },
+    {
+      "id": "EP-03",
+      "tipo": "epica",
+      "titulo": "Pipeline de build",
+      "descripcion": "Scripts de setup que crean los symlinks, sincronizan módulos, cachean la expansión y reportan el progreso.",
+      "estado": "en-curso",
+      "inicio": "2026-06-16",
+      "cierre": null
+    },
+    {
+      "id": "EP-04",
+      "tipo": "epica",
+      "titulo": "Experiencia en el playground y las páginas",
+      "descripcion": "Mejoras visibles para quien consulta la documentación: playground OpenAPI interactivo y contenido de las páginas.",
+      "estado": "en-curso",
+      "inicio": "2026-07-23",
+      "cierre": null
+    },
+    {
+      "id": "DL-001",
+      "tipo": "chore",
+      "titulo": "El proyecto arranca como renderizador de documentación",
+      "descripcion": "Se inicializa el proyecto Next.js + Fumadocs y se ajusta el README.",
+      "estado": "liberada",
+      "rama": null,
+      "pr": null,
+      "commits": [
+        "408ebca",
+        "b5d7248"
+      ],
+      "version": "v0.0.2",
+      "inicio": "2026-06-16",
+      "cierre": "2026-06-17"
+    },
+    {
+      "id": "DL-002",
+      "tipo": "feat",
+      "titulo": "La documentación lee los specs OpenAPI de cada módulo",
+      "descripcion": "Se mejora la lectura de los archivos openapi del backend para generar las páginas de API.",
+      "estado": "liberada",
+      "rama": "feat/implement-expander",
+      "pr": 1,
+      "commits": [
+        "b94ee97"
+      ],
+      "version": "v0.0.3",
+      "inicio": "2026-06-18",
+      "cierre": "2026-06-18"
+    },
+    {
+      "id": "DL-003",
+      "tipo": "fix",
+      "titulo": "Los endpoints de un módulo ya no aparecen mezclados con los de otros",
+      "descripcion": "Se crea una instancia OpenAPI independiente por módulo para que staticSource() genere solo las páginas del módulo correspondiente.",
+      "estado": "liberada",
+      "rama": "fix/openapi",
+      "pr": 3,
+      "commits": [
+        "da54ea5"
+      ],
+      "version": "v0.0.4",
+      "inicio": "2026-06-20",
+      "cierre": "2026-06-21",
+      "nota": "La rama fix/openapi-module-isolation (f8a02d6) contiene el mismo cambio y nunca se integró; se puede eliminar."
+    },
+    {
+      "id": "DL-004",
+      "tipo": "feat",
+      "titulo": "La navegación se define en index.json y fragmentos nav.json por módulo",
+      "descripcion": "Reemplaza los docs.json y meta.json escritos a mano por un árbol declarativo en backend/docs/index.json, compuesto por fragmentos nav.json que mantiene cada módulo.",
+      "estado": "liberada",
+      "rama": "feat/nav-structure",
+      "pr": 2,
+      "commits": [
+        "81fccc9"
+      ],
+      "version": "v0.1.0",
+      "inicio": "2026-06-20",
+      "cierre": "2026-06-21"
+    },
+    {
+      "id": "DL-005",
+      "tipo": "hotfix",
+      "titulo": "La expansión OpenAPI funciona en equipos sin motores de base de datos",
+      "descripcion": "Se implementa soporte para generar los schemas de modelos aunque el equipo no tenga instalados los motores de BD.",
+      "estado": "liberada",
+      "rama": "hotfix/openapi-expanded",
+      "pr": 4,
+      "commits": [
+        "a84f558"
+      ],
+      "version": "v0.1.1",
+      "inicio": "2026-06-22",
+      "cierre": "2026-06-22"
+    },
+    {
+      "id": "DL-006",
+      "tipo": "chore",
+      "titulo": "El proyecto se instala sin conflictos en distintos entornos",
+      "descripcion": "Se remueve package-lock.json del repositorio para evitar errores de instalación entre entornos.",
+      "estado": "liberada",
+      "rama": "rm/package-lock",
+      "pr": 5,
+      "commits": [
+        "4d20406"
+      ],
+      "version": "v0.1.2",
+      "inicio": "2026-06-22",
+      "cierre": "2026-06-22"
+    },
+    {
+      "id": "DL-007",
+      "tipo": "feat",
+      "titulo": "La carga inicial de la documentación es más rápida",
+      "descripcion": "Caché incremental para la expansión OpenAPI, expansión asíncrona y paralela por módulo y reporte de sincronización en tiempo real.",
+      "estado": "liberada",
+      "rama": "feat/openapi-render",
+      "pr": 6,
+      "commits": [
+        "7105702",
+        "0baae5e",
+        "f3fc93f",
+        "fe85bc4"
+      ],
+      "version": "v0.2.1",
+      "inicio": "2026-06-22",
+      "cierre": "2026-06-23"
+    },
+    {
+      "id": "DL-008",
+      "tipo": "fix",
+      "titulo": "Los grupos dentro de nodos de tipo api se pueden colapsar",
+      "descripcion": "Los grupos definidos manualmente dentro de un nodo api se generan como carpetas colapsables en el sidebar.",
+      "estado": "liberada",
+      "rama": "fix/nav-structure-openapi",
+      "pr": 7,
+      "commits": [
+        "ae995c4",
+        "c643e27"
+      ],
+      "version": "v0.2.2",
+      "inicio": "2026-06-24",
+      "cierre": "2026-06-24"
+    },
+    {
+      "id": "DL-009",
+      "tipo": "fix",
+      "titulo": "Los grupos pueden contener otros grupos en la navegación",
+      "descripcion": "Los grupos anidados generan su propia subcarpeta en modules/ con meta.json, en vez de tratarse como separadores planos.",
+      "estado": "liberada",
+      "rama": "fix/nav-structure-meta",
+      "pr": 8,
+      "commits": [
+        "222cdea"
+      ],
+      "version": "v0.2.3",
+      "inicio": "2026-06-24",
+      "cierre": "2026-06-24"
+    },
+    {
+      "id": "DL-010",
+      "tipo": "fix",
+      "titulo": "Los enlaces de referencia apuntan a páginas existentes",
+      "descripcion": "Se soluciona que algunos enlaces de referencia entre páginas no encontraran su destino.",
+      "estado": "liberada",
+      "rama": "fix/nav-link-refs",
+      "pr": 9,
+      "commits": [
+        "d1717aa"
+      ],
+      "version": null,
+      "inicio": "2026-06-24",
+      "cierre": "2026-06-24",
+      "nota": "GitHub marca el PR como integrado en main, pero d1717aa no aparece en main ni en dev. Verificar si el cambio se perdió o lo absorbió DL-011."
+    },
+    {
+      "id": "DL-011",
+      "tipo": "refact",
+      "titulo": "El pipeline de build se organiza por responsabilidad",
+      "descripcion": "Se reorganiza scripts/ en nav/, sync/ y openapi/ y se reescribe el código sin cambiar su comportamiento.",
+      "estado": "en-release",
+      "rama": "refact/script",
+      "pr": 10,
+      "commits": [
+        "426a6a6"
+      ],
+      "version": null,
+      "inicio": "2026-06-25",
+      "cierre": "2026-06-25",
+      "docs": [
+        "docs/refactor-scripts.md"
+      ]
+    },
+    {
+      "id": "DL-012",
+      "tipo": "fix",
+      "titulo": "Los enlaces hacia páginas dentro de subgrupos resuelven correctamente",
+      "descripcion": "Se corrige el generador de enlaces de referencia para páginas de primer nivel y páginas ubicadas en subgrupos.",
+      "estado": "en-release",
+      "rama": "fix/nav-links-subgroups",
+      "pr": 11,
+      "commits": [
+        "f22f9e5"
+      ],
+      "version": null,
+      "inicio": "2026-06-25",
+      "cierre": "2026-06-26",
+      "docs": [
+        "docs/bug-links-analisis.md"
+      ]
+    },
+    {
+      "id": "DL-013",
+      "tipo": "fix",
+      "titulo": "Los enlaces hacia APIs dentro de subgrupos resuelven correctamente",
+      "descripcion": "Las páginas de playground API dentro de subgrupos respetan su carpeta y el validador acepta enlaces hacia páginas virtuales.",
+      "estado": "en-release",
+      "rama": "fix/nav-links-api-subgroups",
+      "pr": 12,
+      "commits": [
+        "bea5dd9"
+      ],
+      "version": null,
+      "inicio": "2026-06-25",
+      "cierre": "2026-06-26",
+      "docs": [
+        "docs/bug-links-analisis.md"
+      ]
+    },
+    {
+      "id": "DL-014",
+      "tipo": "fix",
+      "titulo": "La sincronización OpenAPI ya no agota la memoria en laptops",
+      "descripcion": "Los specs se expanden uno a uno en lugar de en paralelo, porque cada expansión lanza subprocesos de introspección Sequelize que saturaban equipos de 16 GB.",
+      "estado": "en-release",
+      "rama": "fix/procesamiento-openapi",
+      "pr": 13,
+      "commits": [
+        "7b70e59"
+      ],
+      "version": null,
+      "inicio": "2026-07-15",
+      "cierre": "2026-07-15"
+    },
+    {
+      "id": "DL-015",
+      "tipo": "fix",
+      "titulo": "Los payloads Joi se reconocen con cualquier versión de Joi",
+      "descripcion": "Se detectan los schemas Joi por duck-typing, ya que payload.isJoi dejó de existir en Joi 17+.",
+      "estado": "en-release",
+      "rama": null,
+      "pr": null,
+      "commits": [
+        "b422e12"
+      ],
+      "version": null,
+      "inicio": "2026-07-21",
+      "cierre": "2026-07-21",
+      "nota": "Commit directo, sin rama ni PR."
+    },
+    {
+      "id": "DL-016",
+      "tipo": "fix",
+      "titulo": "El playground funciona desde entornos no locales",
+      "descripcion": "Se soluciona que las pruebas desde el playground fallaran cuando la documentación no corre en localhost.",
+      "estado": "en-release",
+      "rama": "fix/playground-access",
+      "pr": 14,
+      "commits": [
+        "327edf8"
+      ],
+      "version": null,
+      "inicio": "2026-07-23",
+      "cierre": "2026-07-23"
+    },
+    {
+      "id": "DL-017",
+      "tipo": "fix",
+      "titulo": "Las referencias locales dentro de archivos OpenAPI externos se resuelven",
+      "descripcion": "Los $ref locales se re-etiquetan con la ruta del archivo externo y se neutralizan los campos VIRTUAL antes de generar el schema Sequelize.",
+      "estado": "en-release",
+      "rama": "fix/openapi-expansion-refs",
+      "pr": 15,
+      "commits": [
+        "2e63ba9"
+      ],
+      "version": null,
+      "inicio": "2026-09-17",
+      "cierre": "2026-11-03"
+    },
+    {
+      "id": "DL-018",
+      "tipo": "feat",
+      "titulo": "El pipeline reporta por separado los warnings de Sequelize",
+      "descripcion": "Los warnings de la introspección Sequelize se separan de los errores y se muestran en el reporte de sincronización.",
+      "estado": "en-release",
+      "rama": "feat/warning-reports",
+      "pr": 16,
+      "commits": [
+        "bf25717"
+      ],
+      "version": null,
+      "inicio": "2026-09-28",
+      "cierre": "2026-11-03",
+      "nota": "PR apilado: incluye el commit de DL-017."
+    },
+    {
+      "id": "DL-019",
+      "tipo": "feat",
+      "titulo": "Los endpoints de API pueden organizarse en grupos anidados",
+      "descripcion": "La expansión OpenAPI permite agrupar endpoints en grupos dentro de otros grupos.",
+      "estado": "en-release",
+      "rama": "feat/openapi-expander-refs",
+      "pr": 19,
+      "commits": [
+        "3f2f99a"
+      ],
+      "version": null,
+      "inicio": "2026-09-28",
+      "cierre": "2026-11-03"
+    },
+    {
+      "id": "DL-020",
+      "tipo": "fix",
+      "titulo": "Los títulos de nav.json prevalecen en la barra lateral",
+      "descripcion": "El sidebar usa el título definido en nav.json en lugar del título del archivo, y se conservan las rutas relativas de páginas en distintas carpetas (recorrido de evaluaciones).",
+      "estado": "en-revision",
+      "rama": "fix/navbar-refs",
+      "pr": 17,
+      "commits": [
+        "a3abc1b",
+        "0314000"
+      ],
+      "version": null,
+      "inicio": "2026-09-30",
+      "cierre": null
+    },
+    {
+      "id": "DL-021",
+      "tipo": "feat",
+      "titulo": "El playground de API acepta imágenes y PDF en el cuerpo de la petición",
+      "descripcion": "Se registran media adapters binarios para image/jpeg, image/png y application/pdf en las páginas OpenAPI.",
+      "estado": "en-revision",
+      "rama": "feat/images-support",
+      "pr": 18,
+      "commits": [
+        "191f7a5"
+      ],
+      "version": null,
+      "inicio": "2026-10-05",
+      "cierre": null,
+      "nota": "PR apilado: incluye los commits de DL-017 a DL-020."
+    },
+    {
+      "id": "DL-022",
+      "tipo": "fix",
+      "titulo": "Los marcadores custom se expanden en todas las secciones de components",
+      "descripcion": "expandSpec recorría solo components.schemas; ahora recorre todo components (parameters, requestBodies, responses…). Se versiona la huella de la caché para invalidar las expansiones anteriores.",
+      "estado": "en-curso",
+      "rama": "dev",
+      "pr": null,
+      "commits": [],
+      "version": null,
+      "inicio": "2026-10-26",
+      "cierre": null,
+      "nota": "Cambios sin commit en scripts/openapi/cache.js y scripts/openapi/expander.js."
+    },
+    {
+      "id": "DL-023",
+      "tipo": "feat",
+      "titulo": "El equipo puede dar seguimiento al historial de actividades del proyecto",
+      "descripcion": "Se crea .actividades/ con un grafo JSON de actividades y épicas reconstruido desde git y GitHub, su JSON Schema, y el comando npm run actividades que lo valida y resume.",
+      "estado": "en-curso",
+      "rama": "DL-023",
+      "pr": null,
+      "commits": [],
+      "version": null,
+      "inicio": "2026-11-02",
+      "cierre": null,
+      "docs": [
+        "README.md"
+      ]
+    }
+  ],
+  "aristas": [
+    {
+      "de": "DL-004",
+      "a": "EP-01",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-008",
+      "a": "EP-01",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-009",
+      "a": "EP-01",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-010",
+      "a": "EP-01",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-012",
+      "a": "EP-01",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-013",
+      "a": "EP-01",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-020",
+      "a": "EP-01",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-002",
+      "a": "EP-02",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-003",
+      "a": "EP-02",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-005",
+      "a": "EP-02",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-015",
+      "a": "EP-02",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-017",
+      "a": "EP-02",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-018",
+      "a": "EP-02",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-019",
+      "a": "EP-02",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-022",
+      "a": "EP-02",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-001",
+      "a": "EP-03",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-006",
+      "a": "EP-03",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-007",
+      "a": "EP-03",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-011",
+      "a": "EP-03",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-014",
+      "a": "EP-03",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-016",
+      "a": "EP-04",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-021",
+      "a": "EP-04",
+      "tipo": "parte-de"
+    },
+    {
+      "de": "DL-003",
+      "a": "DL-002",
+      "tipo": "depende-de"
+    },
+    {
+      "de": "DL-009",
+      "a": "DL-004",
+      "tipo": "depende-de"
+    },
+    {
+      "de": "DL-020",
+      "a": "DL-004",
+      "tipo": "depende-de"
+    },
+    {
+      "de": "DL-018",
+      "a": "DL-017",
+      "tipo": "depende-de",
+      "nota": "PR #16 se construyó sobre la rama de #15."
+    },
+    {
+      "de": "DL-014",
+      "a": "DL-007",
+      "tipo": "corrige",
+      "nota": "La expansión paralela de DL-007 saturaba la memoria."
+    },
+    {
+      "de": "DL-012",
+      "a": "DL-009",
+      "tipo": "relacionada",
+      "nota": "Los subgrupos con carpeta propia cambiaron cómo se resuelven los enlaces."
+    },
+    {
+      "de": "DL-012",
+      "a": "DL-010",
+      "tipo": "relacionada"
+    },
+    {
+      "de": "DL-013",
+      "a": "DL-012",
+      "tipo": "relacionada",
+      "nota": "Mismo análisis: escenario 2 de docs/bug-links-analisis.md."
+    },
+    {
+      "de": "DL-013",
+      "a": "DL-008",
+      "tipo": "relacionada"
+    },
+    {
+      "de": "DL-019",
+      "a": "DL-008",
+      "tipo": "relacionada"
+    },
+    {
+      "de": "DL-022",
+      "a": "DL-017",
+      "tipo": "relacionada"
+    }
+  ]
+}
