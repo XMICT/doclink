@@ -201,13 +201,13 @@
       "tipo": "refact",
       "titulo": "El pipeline de build se organiza por responsabilidad",
       "descripcion": "Se reorganiza scripts/ en nav/, sync/ y openapi/ y se reescribe el código sin cambiar su comportamiento.",
-      "estado": "en-release",
+      "estado": "liberada",
       "rama": "refact/script",
       "pr": 10,
       "commits": [
         "426a6a6"
       ],
-      "version": null,
+      "version": "v0.3.0",
       "inicio": "2026-06-25",
       "cierre": "2026-06-25",
       "docs": [
@@ -219,13 +219,13 @@
       "tipo": "fix",
       "titulo": "Los enlaces hacia páginas dentro de subgrupos resuelven correctamente",
       "descripcion": "Se corrige el generador de enlaces de referencia para páginas de primer nivel y páginas ubicadas en subgrupos.",
-      "estado": "en-release",
+      "estado": "liberada",
       "rama": "fix/nav-links-subgroups",
       "pr": 11,
       "commits": [
         "f22f9e5"
       ],
-      "version": null,
+      "version": "v0.3.0",
       "inicio": "2026-06-25",
       "cierre": "2026-06-26",
       "docs": [
@@ -237,13 +237,13 @@
       "tipo": "fix",
       "titulo": "Los enlaces hacia APIs dentro de subgrupos resuelven correctamente",
       "descripcion": "Las páginas de playground API dentro de subgrupos respetan su carpeta y el validador acepta enlaces hacia páginas virtuales.",
-      "estado": "en-release",
+      "estado": "liberada",
       "rama": "fix/nav-links-api-subgroups",
       "pr": 12,
       "commits": [
         "bea5dd9"
       ],
-      "version": null,
+      "version": "v0.3.0",
       "inicio": "2026-06-25",
       "cierre": "2026-06-26",
       "docs": [
@@ -255,13 +255,13 @@
       "tipo": "fix",
       "titulo": "La sincronización OpenAPI ya no agota la memoria en laptops",
       "descripcion": "Los specs se expanden uno a uno en lugar de en paralelo, porque cada expansión lanza subprocesos de introspección Sequelize que saturaban equipos de 16 GB.",
-      "estado": "en-release",
+      "estado": "liberada",
       "rama": "fix/procesamiento-openapi",
       "pr": 13,
       "commits": [
         "7b70e59"
       ],
-      "version": null,
+      "version": "v0.3.0",
       "inicio": "2026-07-15",
       "cierre": "2026-07-15"
     },
@@ -270,13 +270,13 @@
       "tipo": "fix",
       "titulo": "Los payloads Joi se reconocen con cualquier versión de Joi",
       "descripcion": "Se detectan los schemas Joi por duck-typing, ya que payload.isJoi dejó de existir en Joi 17+.",
-      "estado": "en-release",
+      "estado": "liberada",
       "rama": null,
       "pr": null,
       "commits": [
         "b422e12"
       ],
-      "version": null,
+      "version": "v0.3.0",
       "inicio": "2026-07-21",
       "cierre": "2026-07-21",
       "nota": "Commit directo, sin rama ni PR."
@@ -286,13 +286,13 @@
       "tipo": "fix",
       "titulo": "El playground funciona desde entornos no locales",
       "descripcion": "Se soluciona que las pruebas desde el playground fallaran cuando la documentación no corre en localhost.",
-      "estado": "en-release",
+      "estado": "liberada",
       "rama": "fix/playground-access",
       "pr": 14,
       "commits": [
         "327edf8"
       ],
-      "version": null,
+      "version": "v0.3.0",
       "inicio": "2026-07-23",
       "cierre": "2026-07-23"
     },
@@ -301,13 +301,13 @@
       "tipo": "fix",
       "titulo": "Las referencias locales dentro de archivos OpenAPI externos se resuelven",
       "descripcion": "Los $ref locales se re-etiquetan con la ruta del archivo externo y se neutralizan los campos VIRTUAL antes de generar el schema Sequelize.",
-      "estado": "en-release",
+      "estado": "liberada",
       "rama": "fix/openapi-expansion-refs",
       "pr": 15,
       "commits": [
         "2e63ba9"
       ],
-      "version": null,
+      "version": "v0.3.0",
       "inicio": "2026-09-17",
       "cierre": "2026-11-03"
     },
@@ -316,13 +316,13 @@
       "tipo": "feat",
       "titulo": "El pipeline reporta por separado los warnings de Sequelize",
       "descripcion": "Los warnings de la introspección Sequelize se separan de los errores y se muestran en el reporte de sincronización.",
-      "estado": "en-release",
+      "estado": "liberada",
       "rama": "feat/warning-reports",
       "pr": 16,
       "commits": [
         "bf25717"
       ],
-      "version": null,
+      "version": "v0.3.0",
       "inicio": "2026-09-28",
       "cierre": "2026-11-03",
       "nota": "PR apilado: incluye el commit de DL-017."
@@ -332,13 +332,13 @@
       "tipo": "feat",
       "titulo": "Los endpoints de API pueden organizarse en grupos anidados",
       "descripcion": "La expansión OpenAPI permite agrupar endpoints en grupos dentro de otros grupos.",
-      "estado": "en-release",
+      "estado": "liberada",
       "rama": "feat/openapi-expander-refs",
       "pr": 19,
       "commits": [
         "3f2f99a"
       ],
-      "version": null,
+      "version": "v0.3.0",
       "inicio": "2026-09-28",
       "cierre": "2026-11-03"
     },
@@ -347,13 +347,13 @@
       "tipo": "fix",
       "titulo": "Los títulos de nav.json prevalecen en la barra lateral",
       "descripcion": "El sidebar usa el título definido en nav.json en lugar del título del archivo, y se conservan las rutas relativas de páginas en distintas carpetas (recorrido de evaluaciones).",
-      "estado": "en-release",
+      "estado": "liberada",
       "rama": "fix/navbar-refs",
       "pr": 17,
       "commits": [
         "d70eada"
       ],
-      "version": null,
+      "version": "v0.3.0",
       "inicio": "2026-09-30",
       "cierre": "2026-11-10"
     },
@@ -362,13 +362,13 @@
       "tipo": "feat",
       "titulo": "El playground de API acepta imágenes y PDF en el cuerpo de la petición",
       "descripcion": "Se registran media adapters binarios para image/jpeg, image/png y application/pdf en las páginas OpenAPI.",
-      "estado": "en-release",
+      "estado": "liberada",
       "rama": "feat/images-support",
       "pr": 18,
       "commits": [
         "fcf3d03"
       ],
-      "version": null,
+      "version": "v0.3.0",
       "inicio": "2026-10-05",
       "cierre": "2026-11-10"
     },
@@ -377,13 +377,13 @@
       "tipo": "fix",
       "titulo": "Los marcadores custom se expanden en todas las secciones de components",
       "descripcion": "expandSpec recorría solo components.schemas; ahora recorre todo components (parameters, requestBodies, responses…). Se versiona la huella de la caché para invalidar las expansiones anteriores.",
-      "estado": "en-release",
+      "estado": "liberada",
       "rama": "DL-022",
       "pr": 24,
       "commits": [
         "b079f75"
       ],
-      "version": null,
+      "version": "v0.3.0",
       "inicio": "2026-10-26",
       "cierre": "2026-11-10"
     },
@@ -392,13 +392,13 @@
       "tipo": "feat",
       "titulo": "El equipo puede dar seguimiento al historial de actividades del proyecto",
       "descripcion": "Se crea .actividades/ con un grafo JSON de actividades y épicas reconstruido desde git y GitHub, su JSON Schema, y el comando npm run actividades que lo valida y resume.",
-      "estado": "en-release",
+      "estado": "liberada",
       "rama": "DL-023",
       "pr": 20,
       "commits": [
         "8e5a6d8"
       ],
-      "version": null,
+      "version": "v0.3.0",
       "inicio": "2026-11-02",
       "cierre": "2026-11-03",
       "docs": [
@@ -410,13 +410,13 @@
       "tipo": "refact",
       "titulo": "La documentación se construye en segundos aunque cambien los modelos del backend",
       "descripcion": "La introspección de modelos Sequelize y payloads Joi/AJV pasa de un subproceso Node por modelo o payload (cada uno recargando los 336 modelos) a un único worker persistente que carga los modelos una sola vez.",
-      "estado": "en-release",
+      "estado": "liberada",
       "rama": "DL-024",
       "pr": 21,
       "commits": [
         "1671c8c"
       ],
-      "version": null,
+      "version": "v0.3.0",
       "inicio": "2026-11-03",
       "cierre": "2026-11-10"
     },
@@ -425,13 +425,13 @@
       "tipo": "fix",
       "titulo": "Los autores del backend enlazan páginas con la ruta real del archivo",
       "descripcion": "Los enlaces entre páginas se escriben con la ruta física relativa (incluyendo docs/) y doclink los traduce a la ubicación lógica de modules/; los enlaces que no se pueden resolver avisan en lugar de romper el build.",
-      "estado": "en-release",
+      "estado": "liberada",
       "rama": "DL-025",
       "pr": 23,
       "commits": [
         "79ec597"
       ],
-      "version": null,
+      "version": "v0.3.0",
       "inicio": "2026-11-03",
       "cierre": "2026-11-10",
       "docs": [
@@ -444,13 +444,13 @@
       "tipo": "fix",
       "titulo": "El build ya no falla con specs OpenAPI que solo usan referencias a schemas.yaml",
       "descripcion": "detectExtensions no contaba los $ref externos como marcadores, así que un spec que solo los usaba (af_categoria_config_contable) se cargaba sin expandir y fumadocs-openapi buscaba schemas.yaml en la raíz de doclink.",
-      "estado": "en-release",
+      "estado": "liberada",
       "rama": "DL-026",
       "pr": 22,
       "commits": [
         "ca40566"
       ],
-      "version": null,
+      "version": "v0.3.0",
       "inicio": "2026-11-03",
       "cierre": "2026-11-10"
     }
